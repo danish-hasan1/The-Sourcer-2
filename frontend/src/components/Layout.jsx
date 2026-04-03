@@ -9,15 +9,15 @@ import clsx from 'clsx'
 
 const NAV = [
   { section: 'WORKSPACE' },
-  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/source',    icon: Search,          label: 'Source Candidates' },
-  { to: '/pipeline',  icon: GitBranch,       label: 'Pipeline', badge: true },
-  { to: '/saved-jds', icon: FileText,        label: 'Saved JDs' },
+  { to: '/app/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/app/source',    icon: Search,          label: 'Source Candidates' },
+  { to: '/app/pipeline',  icon: GitBranch,       label: 'Pipeline', badge: true },
+  { to: '/app/saved-jds', icon: FileText,        label: 'Saved JDs' },
   { section: 'ANALYTICS' },
-  { to: '/reports',   icon: BarChart2,       label: 'Reports' },
+  { to: '/app/reports',   icon: BarChart2,       label: 'Reports' },
   { section: 'ADMIN' },
-  { to: '/users',     icon: Users,           label: 'Users', adminOnly: true },
-  { to: '/settings',  icon: Settings,        label: 'Settings' },
+  { to: '/app/users',     icon: Users,           label: 'Users', adminOnly: true },
+  { to: '/app/settings',  icon: Settings,        label: 'Settings' },
 ]
 
 export default function Layout() {

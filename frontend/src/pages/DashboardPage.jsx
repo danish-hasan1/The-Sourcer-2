@@ -73,9 +73,9 @@ export default function DashboardPage() {
         {/* Quick actions */}
         <div className="grid grid-cols-3 gap-4 mb-8">
           {[
-            { icon: Plus,       label: 'New sourcing run',  sub: 'Upload JD and source candidates', action: () => navigate('/source'),    color: 'bg-brand-600 text-white hover:bg-brand-800' },
-            { icon: GitBranch,  label: 'View pipeline',     sub: 'Manage your candidate pipeline',  action: () => navigate('/pipeline'),  color: 'bg-gray-900 text-white hover:bg-gray-700' },
-            { icon: FileText,   label: 'Saved JDs',         sub: 'Reuse previous job descriptions', action: () => navigate('/saved-jds'), color: 'bg-white text-gray-900 hover:bg-gray-50 border border-gray-200' },
+            { icon: Plus,       label: 'New sourcing run',  sub: 'Upload JD and source candidates', action: () => navigate('/app/source'),    color: 'bg-brand-600 text-white hover:bg-brand-800' },
+            { icon: GitBranch,  label: 'View pipeline',     sub: 'Manage your candidate pipeline',  action: () => navigate('/app/pipeline'),  color: 'bg-gray-900 text-white hover:bg-gray-700' },
+            { icon: FileText,   label: 'Saved JDs',         sub: 'Reuse previous job descriptions', action: () => navigate('/app/saved-jds'), color: 'bg-white text-gray-900 hover:bg-gray-50 border border-gray-200' },
           ].map((a, i) => {
             const Icon = a.icon
             return (
@@ -93,14 +93,14 @@ export default function DashboardPage() {
         <div>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold text-gray-900">Recent Sourcing Runs</h2>
-            <button onClick={() => navigate('/source')} className="text-xs text-brand-600 hover:underline flex items-center gap-1">
+            <button onClick={() => navigate('/app/source')} className="text-xs text-brand-600 hover:underline flex items-center gap-1">
               View all <ArrowRight size={12} />
             </button>
           </div>
           <div className="space-y-2">
             {jobs.length > 0 ? jobs.map((job, i) => (
               <div key={job.id}
-                onClick={() => navigate(`/source/${job.id}`)}
+                onClick={() => navigate(`/app/source/${job.id}`)}
                 className={`bg-white rounded-xl border border-gray-100 px-4 py-3.5 flex items-center gap-4 cursor-pointer hover:border-gray-300 transition animate-fade-up delay-${i+1}`}>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium text-gray-900">{job.title}</div>
@@ -111,7 +111,7 @@ export default function DashboardPage() {
             )) : !loading && (
               <div className="bg-white rounded-xl border border-dashed border-gray-200 px-4 py-8 text-center">
                 <p className="text-sm text-gray-400">No sourcing runs yet</p>
-                <button onClick={() => navigate('/source')} className="mt-2 text-sm text-brand-600 hover:underline">Start your first run →</button>
+                <button onClick={() => navigate('/app/source')} className="mt-2 text-sm text-brand-600 hover:underline">Start your first run →</button>
               </div>
             )}
           </div>

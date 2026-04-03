@@ -19,7 +19,7 @@ export default function LoginPage() {
     try {
       const res = await authApi.login(email, password)
       setAuth(res.data.access_token, res.data.user)
-      navigate('/dashboard')
+      navigate('/app/dashboard')
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Invalid credentials')
     } finally {
@@ -38,7 +38,7 @@ export default function LoginPage() {
         'demo123'
       )
       setAuth(res.data.access_token, res.data.user)
-      navigate('/dashboard')
+      navigate('/app/dashboard')
     } catch {
       // If backend not running, use mock auth
       setAuth('demo-token', {
@@ -46,7 +46,7 @@ export default function LoginPage() {
         email: role === 'admin' ? 'admin@talentai.com' : 'recruiter@talentai.com',
         role
       })
-      navigate('/dashboard')
+      navigate('/app/dashboard')
     } finally {
       setLoading(false)
     }

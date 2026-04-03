@@ -46,7 +46,7 @@ export default function SavedJDsPage() {
           <p className="text-xs text-gray-400 mt-0.5">{jds.length} JD{jds.length !== 1 ? 's' : ''} saved · Reuse for quick sourcing</p>
         </div>
         <div className="flex-1" />
-        <button onClick={() => navigate('/source')}
+        <button onClick={() => navigate('/app/source')}
           className="flex items-center gap-2 px-4 py-2 bg-brand-600 text-white text-[13px] font-medium rounded-lg hover:bg-brand-800 transition">
           <Plus size={14} /> New JD
         </button>
@@ -69,7 +69,7 @@ export default function SavedJDsPage() {
             <FileText size={32} className="mx-auto mb-3 opacity-30" />
             {jds.length === 0
               ? <><p className="text-sm">No saved JDs yet</p>
-                  <button onClick={() => navigate('/source')} className="mt-2 text-sm text-brand-600 hover:underline">Upload your first JD →</button></>
+                  <button onClick={() => navigate('/app/source')} className="mt-2 text-sm text-brand-600 hover:underline">Upload your first JD →</button></>
               : <p className="text-sm">No JDs match your search</p>}
           </div>
         ) : (
@@ -101,7 +101,7 @@ export default function SavedJDsPage() {
                     className="p-2 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition" title="Delete">
                     <Trash2 size={13} />
                   </button>
-                  <button onClick={() => navigate(`/source/${jd.id}`)}
+                  <button onClick={() => navigate(`/app/source/${jd.id}`)}
                     className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-600 text-white text-[12px] rounded-lg hover:bg-brand-800 transition ml-1">
                     Use <ChevronRight size={12} />
                   </button>

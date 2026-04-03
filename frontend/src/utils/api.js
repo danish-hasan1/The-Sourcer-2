@@ -1,8 +1,14 @@
 import axios from 'axios'
 import { useAuthStore } from '../store/authStore'
 
+// In production (Vercel), VITE_API_URL points to your Render backend.
+// In development, Vite proxies /api → localhost:8000 via vite.config.js.
+const BASE = import.meta.env.VITE_API_URL
+  ? `${import.meta.env.VITE_API_URL}/api`
+  : '/api'
+
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: BASE,
   timeout: 120_000,
 })
 

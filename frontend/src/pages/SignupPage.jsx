@@ -19,7 +19,7 @@ export default function SignupPage() {
     try {
       const res = await authApi.signup(form)
       setAuth(res.data.access_token, res.data.user)
-      navigate('/dashboard')
+      navigate('/app/dashboard')
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Signup failed')
     } finally {
