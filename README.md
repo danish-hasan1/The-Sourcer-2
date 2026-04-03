@@ -57,13 +57,6 @@ npm run dev
 # App running at http://localhost:3000
 ```
 
-### Demo Login
-
-| Role      | Email                     | Password  |
-|-----------|---------------------------|-----------|
-| Admin     | admin@talentai.com        | demo123   |
-| Recruiter | recruiter@talentai.com    | demo123   |
-
 ---
 
 ## API Keys Required
