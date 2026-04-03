@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from typing import List
 import asyncio
 import json
-from datetime import datetime, timezone
+from datetime import datetime
 
 from db.database import get_db, AsyncSessionLocal
 from models.models import Job, SourcingRun, Candidate, User
@@ -206,7 +206,7 @@ async def _sourcing_task(run_id, job_id, analysis, platforms, max_candidates, se
                 run.status = "complete"
                 run.progress = 100
                 run.found_count = len(candidates)
-                run.finished_at = datetime.now(timezone.utc)
+                run.finished_at = datetime.utcnow()
 
             await db.commit()
 
@@ -226,6 +226,11 @@ async def _sourcing_task(run_id, job_id, analysis, platforms, max_candidates, se
 
 def _candidate_out(c: Candidate) -> dict:
     ev = c.evaluation or {}
+    # Dynamically return all category scores — works for any role
+    category_scores = {
+        k: v.get("awarded", 0)
+        for k, v in ev.get("category_scores", {}).items()
+    }
     return {
         "id": c.id,
         "name": c.name,
@@ -245,8 +250,5 @@ def _candidate_out(c: Candidate) -> dict:
         "biggest_strength": ev.get("biggest_strength", ""),
         "biggest_risk": ev.get("biggest_risk", ""),
         "shortlist_decision": ev.get("shortlist_decision", ""),
-        "payments": ev.get("category_scores", {}).get("Payments domain expertise", {}).get("awarded", 0),
-        "stake":    ev.get("category_scores", {}).get("Stakeholder management",    {}).get("awarded", 0),
-        "data":     ev.get("category_scores", {}).get("Data-driven product development", {}).get("awarded", 0),
-        "lead":     ev.get("category_scores", {}).get("Leadership", {}).get("awarded", 0),
+        "category_scores": category_scores,
     }
