@@ -1,0 +1,108 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --sidebar-width: 224px;
+  --header-height: 56px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: #F8F9FA;
+  color: #0F1117;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: #9CA3AF; }
+
+/* Score ring */
+.score-ring {
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+}
+
+/* Animations */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+
+.animate-fade-up   { animation: fadeInUp 0.3s ease both; }
+.animate-slide-in  { animation: slideInRight 0.3s ease both; }
+.animate-pulse-dot { animation: pulse-dot 1.4s ease infinite; }
+
+.skeleton {
+  background: linear-gradient(90deg, #F3F4F6 25%, #E5E7EB 50%, #F3F4F6 75%);
+  background-size: 400px 100%;
+  animation: shimmer 1.4s infinite;
+  border-radius: 6px;
+}
+
+/* Stagger delays */
+.delay-1 { animation-delay: 0.05s; }
+.delay-2 { animation-delay: 0.10s; }
+.delay-3 { animation-delay: 0.15s; }
+.delay-4 { animation-delay: 0.20s; }
+.delay-5 { animation-delay: 0.25s; }
+
+/* Card hover */
+.card-hover {
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.card-hover:hover {
+  border-color: #9CA3AF !important;
+}
+
+/* Glassmorphism surface */
+.glass {
+  background: rgba(255,255,255,0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Progress bar */
+.progress-track {
+  height: 4px;
+  background: #E5E7EB;
+  border-radius: 2px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #185FA5, #378ADD);
+  transition: width 0.6s ease;
+}
+
+/* Tag variants */
+.tag-core   { background:#E6F1FB; color:#185FA5; border-color:#B5D4F4; }
+.tag-nice   { background:#EAF3DE; color:#3B6D11; border-color:#C0DD97; }
+.tag-match  { background:#E6F1FB; color:#185FA5; }
+.tag-gap    { background:#FCEBEB; color:#A32D2D; }
+.tag-warn   { background:#FAEEDA; color:#854F0B; }
+
+/* Verdict badges */
+.verdict-strong   { background:#EAF3DE; color:#3B6D11; }
+.verdict-moderate { background:#FAEEDA; color:#854F0B; }
+.verdict-weak     { background:#FCEBEB; color:#A32D2D; }
+.verdict-reject   { background:#F3F4F6; color:#6B7280; }
