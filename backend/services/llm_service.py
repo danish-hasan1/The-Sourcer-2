@@ -27,7 +27,7 @@ async def _anthropic(prompt, system, max_tokens):
     import anthropic
     client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
     msg = await client.messages.create(
-        model="claude-sonnet-4-6",
+        model="claude-3-5-sonnet-20241022",
         max_tokens=max_tokens,
         system=system or "You are a senior recruitment intelligence AI.",
         messages=[{"role": "user", "content": prompt}],

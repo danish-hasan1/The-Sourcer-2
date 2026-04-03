@@ -11,19 +11,15 @@ services:
         value: "3.11"
       - key: SECRET_KEY
         generateValue: true
-      - key: DATABASE_URL
-        value: postgresql+asyncpg://postgres.dhfyfvodyawcqsqtrtss:AYQ0E7DjC92qWYwf@aws-1-ap-south-1.pooler.supabase.com:6543/postgres
-      - key: SUPABASE_URL
-        value: https://dhfyfvodyawcqsqtrtss.supabase.co
-      - key: SUPABASE_ANON_KEY
-        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRoZnlmdm9keWF3Y3FzcXRydHNzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyMDQzOTIsImV4cCI6MjA5MDc4MDM5Mn0.CQwNoTbROmi0jFhuknv6hh2LXSywXuT6qewnIV44eFE
-      - key: GROQ_API_KEY
-        value: sk_LvIgHlvwmXLGi92k5f17WGdyb3FYA0pp5i1RqBhSFrhrEkA2n1db
-      - key: SERPAPI_KEY
-        value: 9400c016f4ced8e2b0b66ba43a2f7092d490c3a25a3a33c1c2f2f6903fc25c6c
-      - key: DEFAULT_LLM_PROVIDER
-        value: groq
       - key: MAX_CANDIDATES
         value: "50"
       - key: FRONTEND_URL
         value: https://your-app.vercel.app
+      # ⚠️  Set these manually in the Render dashboard → Environment tab
+      # Do NOT add secrets here — this file is public on GitHub
+      # - DATABASE_URL
+      # - SUPABASE_URL
+      # - SUPABASE_ANON_KEY
+      # - GROQ_API_KEY
+      # - SERPAPI_KEY
+      # - DEFAULT_LLM_PROVIDER

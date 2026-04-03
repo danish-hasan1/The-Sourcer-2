@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useDropzone } from 'react-dropzone'
+import { useParams } from 'react-router-dom'
 import { Upload, ChevronRight, X, Sparkles, RefreshCw, Filter, ChevronDown } from 'lucide-react'
 import { sourcingApi, jobsApi } from '../utils/api'
 import { useAppStore } from '../store/appStore'
@@ -14,6 +15,7 @@ import SkeletonCards from '../components/SkeletonCards'
 const STEPS = ['Upload JD', 'Analyse', 'Source', 'Review']
 
 export default function SourcePage() {
+  const { id: paramId } = useParams()
   const [step, setStep] = useState(0)
   const [jdText, setJdText] = useState('')
   const [jobTitle, setJobTitle] = useState('')
@@ -28,6 +30,23 @@ export default function SourcePage() {
   const { selectedCandidate, setSelectedCandidate } = useAppStore()
   const pollRef = useRef(null)
 
+  // Load existing job when navigating from SavedJDs
+  useEffect(() => {
+    if (!paramId) return
+    jobsApi.get(paramId).then(res => {
+      const job = res.data
+      setJobId(job.id)
+      setJobTitle(job.title || '')
+      setJdText(job.jd_text || '')
+      if (job.analysis) {
+        setJdAnalysis(job.analysis)
+        setStep(2)
+      } else if (job.jd_text) {
+        setStep(1)
+      }
+    }).catch(() => toast.error('Could not load saved JD'))
+  }, [paramId])
+
   // Drop zone
   const onDrop = useCallback(async (files) => {
     const file = files[0]
@@ -35,20 +54,22 @@ export default function SourcePage() {
     if (file.type === 'text/plain') {
       const text = await file.text()
       setJdText(text)
+      if (step === 0) setStep(1)
     } else {
-      // PDF/DOCX — send to backend for extraction
+      // PDF/DOCX — send to /jobs/upload endpoint for text extraction
       const fd = new FormData()
       fd.append('file', file)
       try {
-        const res = await jobsApi.create(fd)
+        const res = await jobsApi.uploadJD(fd)
         setJdText(res.data.text)
-        setJobTitle(res.data.title || '')
+        setJobTitle(prev => prev || res.data.title || '')
+        if (step === 0) setStep(1)
         toast.success('File parsed successfully')
       } catch {
         toast.error('Failed to parse file. Paste the JD manually.')
       }
     }
-  }, [])
+  }, [step])
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -93,8 +114,9 @@ export default function SourcePage() {
         const res = await sourcingApi.status(runId)
         if (res.data.status === 'complete') {
           clearInterval(pollRef.current)
-          const cRes = await sourcingApi.results(jobId || 1)
-          setCandidates(cRes.data.candidates || MOCK_CANDIDATES)
+          if (!jobId) { setLoadingCandidates(false); return }
+          const cRes = await sourcingApi.results(jobId)
+          setCandidates(cRes.data.candidates || [])
           setLoadingCandidates(false)
         }
         if (res.data.candidates?.length) {

@@ -31,6 +31,7 @@ export default function SourcingModal({ jobId, analysis, onClose, onComplete }) 
   const [running, setRunning] = useState(false)
   const [stepIdx, setStepIdx] = useState(-1)
   const [runId, setRunId] = useState(null)
+  const runIdRef = useRef(null)  // ref to avoid stale closure
   const [found, setFound] = useState(0)
   const timerRef = useRef(null)
 
@@ -50,10 +51,13 @@ export default function SourcingModal({ jobId, analysis, onClose, onComplete }) 
 
     // Try real API, fall back to demo
     try {
-      const res = await sourcingApi.start(jobId, [...selected])
+      const res = await sourcingApi.start(jobId, [...selected], maxResults)
       setRunId(res.data.run_id)
+      runIdRef.current = res.data.run_id  // also store in ref to avoid stale closure
     } catch {
-      setRunId('demo-run-' + Date.now())
+      const demoId = 'demo-run-' + Date.now()
+      setRunId(demoId)
+      runIdRef.current = demoId
     }
 
     // Simulate progress
@@ -65,7 +69,7 @@ export default function SourcingModal({ jobId, analysis, onClose, onComplete }) 
         if (idx >= 3) setFound(f => f + Math.floor(Math.random() * 6) + 2)
       } else {
         clearInterval(timerRef.current)
-        setTimeout(() => onComplete(runId || 'demo-run'), 600)
+        setTimeout(() => onComplete(runIdRef.current || 'demo-run'), 600)
       }
     }, 1400)
   }

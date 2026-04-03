@@ -111,26 +111,16 @@ async def run_sourcing(
     await on_progress("Building search queries from JD analysis", 10, None)
 
     boolean = analysis.get("boolean_strings", {}).get("primary", "")
-    location = analysis.get("location", "")
-
-    # Fallback: if no location in top-level, try to extract from role_objective or ideal_candidate_brief
-    if not location:
-        role_obj = analysis.get("role_objective", "")
-        # Common location patterns injected by the LLM into role_objective
-        import re
-        loc_match = re.search(r'\b([A-Z][a-z]+(?:,\s*[A-Z][a-z]+)*)\b', role_obj)
-        if loc_match:
-            location = loc_match.group(1)
+    location = analysis.get("location", "").strip()
 
     # Fallback: if boolean string is empty or suspiciously short, build one from suggested titles
     if not boolean or len(boolean) < 10:
         titles = analysis.get("suggested_titles", [])
         role_obj = analysis.get("role_objective", "")
         if titles:
-            title_query = " OR ".join(f'"{t}"' for t in titles[:3])
-            boolean = title_query
+            boolean = " OR ".join(f'"{t}"' for t in titles[:3])
         elif role_obj:
-            boolean = f'"{role_obj[:60]}"'
+            boolean = f'"{role_obj[:80]}"'
 
     # ── Step 1: Collect raw results from all platforms ──────────────────────
     await on_progress(f"Searching {len(platforms)} platform(s) via SerpAPI", 20, None)

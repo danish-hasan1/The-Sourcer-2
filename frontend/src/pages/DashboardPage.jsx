@@ -18,6 +18,13 @@ export default function DashboardPage() {
   const [jobs, setJobs] = useState([])
   const [loading, setLoading] = useState(true)
 
+  const greeting = (() => {
+    const h = new Date().getHours()
+    if (h < 12) return 'Good morning'
+    if (h < 17) return 'Good afternoon'
+    return 'Good evening'
+  })()
+
   useEffect(() => {
     async function load() {
       try {
@@ -53,7 +60,7 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="bg-white border-b border-gray-100 px-6 py-4">
         <h1 className="text-base font-semibold text-gray-900">
-          Good morning, {user?.name?.split(' ')[0] || 'there'} 👋
+          {greeting}, {user?.name?.split(' ')[0] || 'there'} 👋
         </h1>
         <p className="text-sm text-gray-500 mt-0.5">Here's what's happening across your sourcing pipeline.</p>
       </div>

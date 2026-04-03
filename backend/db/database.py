@@ -8,8 +8,8 @@ engine = create_async_engine(
     settings.DATABASE_URL,
     echo=False,
     pool_pre_ping=_is_pg,
-    pool_size=5 if _is_pg else 1,
-    max_overflow=10 if _is_pg else 0,
+    pool_size=2 if _is_pg else 1,
+    max_overflow=3 if _is_pg else 0,
 )
 AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
 

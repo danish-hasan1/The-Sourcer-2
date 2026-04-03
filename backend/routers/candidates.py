@@ -55,19 +55,6 @@ async def get_candidate(cid: int, user: User = Depends(get_current_user), db: As
     return _out(c)
 
 
-@router.patch("/{cid}/stage")
-async def update_stage(cid: int, body: StageUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    result = await db.execute(
-        select(Candidate).join(Job).where(Candidate.id == cid, Job.owner_id == user.id)
-    )
-    c = result.scalar_one_or_none()
-    if not c:
-        raise HTTPException(404, "Candidate not found")
-    c.stage = body.stage
-    await db.commit()
-    return {"ok": True, "stage": c.stage}
-
-
 @router.patch("/bulk")
 async def bulk_update(body: BulkUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     result = await db.execute(
@@ -79,6 +66,19 @@ async def bulk_update(body: BulkUpdate, user: User = Depends(get_current_user), 
             c.stage = body.stage
     await db.commit()
     return {"updated": len(candidates)}
+
+
+@router.patch("/{cid}/stage")
+async def update_stage(cid: int, body: StageUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(Candidate).join(Job).where(Candidate.id == cid, Job.owner_id == user.id)
+    )
+    c = result.scalar_one_or_none()
+    if not c:
+        raise HTTPException(404, "Candidate not found")
+    c.stage = body.stage
+    await db.commit()
+    return {"ok": True, "stage": c.stage}
 
 
 @router.post("/{cid}/questionnaire")

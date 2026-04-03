@@ -40,17 +40,18 @@ export const authApi = {
 
 // ─── Jobs ────────────────────────────────────────────────────────────────────
 export const jobsApi = {
-  list:    ()     => api.get('/jobs'),
-  get:     (id)   => api.get(`/jobs/${id}`),
-  create:  (data) => api.post('/jobs', data),
-  update:  (id, data) => api.put(`/jobs/${id}`, data),
-  delete:  (id)   => api.delete(`/jobs/${id}`),
-  analyze: (id)   => api.post(`/jobs/${id}/analyze`),
+  list:     ()          => api.get('/jobs'),
+  get:      (id)        => api.get(`/jobs/${id}`),
+  create:   (data)      => api.post('/jobs', data),
+  update:   (id, data)  => api.put(`/jobs/${id}`, data),
+  delete:   (id)        => api.delete(`/jobs/${id}`),
+  analyze:  (id)        => api.post(`/jobs/${id}/analyze`),
+  uploadJD: (formData)  => api.post('/jobs/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
 }
 
 // ─── Sourcing ─────────────────────────────────────────────────────────────────
 export const sourcingApi = {
-  start:    (jobId, platforms) => api.post(`/sourcing/start`, { job_id: jobId, platforms }),
+  start:    (jobId, platforms, maxCandidates = 25) => api.post(`/sourcing/start`, { job_id: jobId, platforms, max_candidates: maxCandidates }),
   status:   (runId)            => api.get(`/sourcing/status/${runId}`),
   results:  (jobId)            => api.get(`/sourcing/results/${jobId}`),
   refine:   (jobId, params)    => api.post(`/sourcing/refine`, { job_id: jobId, ...params }),

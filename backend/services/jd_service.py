@@ -43,6 +43,7 @@ Respond ONLY with this JSON structure:
     "broad": "string",
     "narrow": "string"
   }},
+  "location": "string",
   "suggested_titles": ["string"],
   "suggested_platforms": ["linkedin", "naukri", "indeed", "github", "reed", "infojobs"]
 }}
