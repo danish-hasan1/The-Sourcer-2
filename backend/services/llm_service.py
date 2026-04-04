@@ -73,6 +73,20 @@ async def _google(prompt, system, max_tokens):
 
 
 def extract_json(text: str) -> dict | list:
-    """Strip markdown fences and parse JSON from LLM output."""
+    """Strip markdown fences and parse JSON. Finds outermost { } or [ ] to handle LLM preamble/postamble."""
     clean = re.sub(r"```(?:json)?", "", text).replace("```", "").strip()
-    return json.loads(clean)
+    # Try direct parse first
+    try:
+        return json.loads(clean)
+    except json.JSONDecodeError:
+        pass
+    # Find outermost JSON object or array
+    for start_char, end_char in [('{', '}'), ('[', ']')]:
+        start = clean.find(start_char)
+        end = clean.rfind(end_char)
+        if start != -1 and end > start:
+            try:
+                return json.loads(clean[start:end+1])
+            except json.JSONDecodeError:
+                continue
+    raise ValueError(f"No valid JSON found in LLM response: {clean[:200]}")

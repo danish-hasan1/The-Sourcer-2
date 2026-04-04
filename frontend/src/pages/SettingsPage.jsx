@@ -48,11 +48,15 @@ export default function SettingsPage() {
   async function save() {
     setSaving(true)
     try {
+      // Only send keys that were actually filled in — don't overwrite stored keys with blanks
+      const keysToSend = Object.fromEntries(
+        Object.entries(keys).filter(([, v]) => v && v !== '***')
+      )
       await settingsApi.update({
         active_model:   activeModel,
         serp_provider:  serpProvider,
         max_candidates: maxCandidates,
-        keys,
+        keys: keysToSend,
       })
       setSaved(true)
       toast.success('Settings saved')

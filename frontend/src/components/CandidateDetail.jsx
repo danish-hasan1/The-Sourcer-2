@@ -156,14 +156,15 @@ export default function CandidateDetail({ candidate: c, analysis, onClose, onSta
               <div>
                 <div className="text-[10px] font-semibold text-gray-400 tracking-widest uppercase mb-2">Competency Scores</div>
                 <div className="space-y-2">
-                  {scoreEntries.map(([name, score]) => {
-                    const cat = analysisCategories.find(c => c.name === name)
-                    const max = cat?.weight || 100
+                  {scoreEntries.map(([name, val]) => {
+                    // Support both flat number (legacy) and {score, max} object (current)
+                    const score = typeof val === 'object' ? (val.score ?? 0) : val
+                    const max   = typeof val === 'object' ? (val.max ?? 100) : 100
                     return (
                       <div key={name} className="flex items-center gap-2">
                         <div className="text-[11px] text-gray-600 flex-1 min-w-0 truncate">{name}</div>
                         <div className="w-20 h-1.5 bg-gray-100 rounded-full overflow-hidden flex-shrink-0">
-                          <div className="h-full rounded-full bg-brand-400 transition-all" style={{ width: `${Math.min((score/Math.max(max,1))*100, 100)}%` }} />
+                          <div className="h-full rounded-full bg-brand-400 transition-all" style={{ width: `${Math.min((score / Math.max(max, 1)) * 100, 100)}%` }} />
                         </div>
                         <div className="text-[11px] text-gray-500 w-12 text-right flex-shrink-0">{score}/{max}</div>
                       </div>

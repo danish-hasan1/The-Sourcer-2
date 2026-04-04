@@ -134,11 +134,20 @@ async def refine_search(
     run_id = str(run.id)
     _run_state[run_id] = {"status": "running", "progress": 0, "step": "Starting refined search…", "candidates": [], "found": 0}
 
+    # Apply overrides to analysis before passing to task
+    tweaked_analysis = dict(job.analysis)
+    if body.get("boolean_override"):
+        bs = dict(tweaked_analysis.get("boolean_strings", {}))
+        bs["primary"] = body["boolean_override"]
+        tweaked_analysis["boolean_strings"] = bs
+    if body.get("location_override") is not None:
+        tweaked_analysis["location"] = body["location_override"]
+
     background_tasks.add_task(
         _sourcing_task,
         run_id=run_id,
         job_id=job_id,
-        analysis=job.analysis,
+        analysis=tweaked_analysis,
         platforms=body.get("platforms", ["linkedin"]),
         max_candidates=body.get("max_candidates", 25),
         serp_key=settings.SERPAPI_KEY,
@@ -226,9 +235,9 @@ async def _sourcing_task(run_id, job_id, analysis, platforms, max_candidates, se
 
 def _candidate_out(c: Candidate) -> dict:
     ev = c.evaluation or {}
-    # Dynamically return all category scores — works for any role
+    # Preserve both awarded score and max weight for each competency
     category_scores = {
-        k: v.get("awarded", 0)
+        k: {"score": v.get("awarded", 0), "max": v.get("max", 100)}
         for k, v in ev.get("category_scores", {}).items()
     }
     return {

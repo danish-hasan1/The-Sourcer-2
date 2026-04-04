@@ -28,7 +28,7 @@ export default function SourcePage() {
   const [loadingCandidates, setLoadingCandidates] = useState(false)
   const [activeStage, setActiveStage] = useState('all')
   const [filterFit, setFilterFit] = useState(null)
-  const [savedJdId, setSavedJdId] = useState(null)
+  const [savedJdId, setSavedJdId] = useState(null) // eslint-disable-line -- used for future use
   const [searchParamsOpen, setSearchParamsOpen] = useState(false)
   const { selectedCandidate, setSelectedCandidate } = useAppStore()
   const pollRef = useRef(null)
@@ -120,7 +120,13 @@ export default function SourcePage() {
 
   async function handleSourcingComplete(runId) {
     setShowSourcingModal(false)
+    setShowTweakModal(false)
     setStep(3)
+    // Demo mode — no real backend run
+    if (!runId || runId.startsWith('demo-run')) {
+      setLoadingCandidates(false)
+      return
+    }
     setLoadingCandidates(true)
     // Poll for results
     let attempts = 0
@@ -143,10 +149,8 @@ export default function SourcePage() {
           })
         }
       } catch {
-        // Demo
-        if (attempts >= 3) {
+        if (attempts >= 5) {
           clearInterval(pollRef.current)
-          setCandidates(MOCK_CANDIDATES)
           setLoadingCandidates(false)
         }
       }
