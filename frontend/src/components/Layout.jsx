@@ -1,10 +1,12 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
 import {
   Search, GitBranch, FileText, BarChart2, Settings,
   Users, LogOut, ChevronDown, Zap, LayoutDashboard
 } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import { useAppStore } from '../store/appStore'
+import { pipelineApi } from '../utils/api'
 import clsx from 'clsx'
 
 const NAV = [
@@ -25,6 +27,16 @@ export default function Layout() {
   const navigate = useNavigate()
   const modelOverride = useAppStore(s => s.modelOverride)
   const setModelOverride = useAppStore(s => s.setModelOverride)
+  const [pipelineCount, setPipelineCount] = useState(null)
+
+  useEffect(() => {
+    pipelineApi.summary()
+      .then(res => {
+        const total = Object.values(res.data).reduce((a, b) => a + b, 0)
+        setPipelineCount(total || null)
+      })
+      .catch(() => {})
+  }, [])
 
   const models = ['anthropic', 'openai', 'groq', 'google']
   const currentModel = modelOverride || 'anthropic'
@@ -74,9 +86,9 @@ export default function Layout() {
               >
                 <Icon size={15} className="flex-shrink-0" />
                 <span className="flex-1">{item.label}</span>
-                {item.badge && (
+                {item.badge && pipelineCount !== null && (
                   <span className="bg-brand-600 text-white text-[10px] font-medium px-1.5 py-0.5 rounded-full">
-                    12
+                    {pipelineCount}
                   </span>
                 )}
               </NavLink>

@@ -59,12 +59,13 @@ export const sourcingApi = {
 
 // ─── Candidates ───────────────────────────────────────────────────────────────
 export const candidatesApi = {
-  list:       (jobId, params) => api.get(`/candidates`, { params: { job_id: jobId, ...params } }),
-  get:        (id)            => api.get(`/candidates/${id}`),
-  updateStage:(id, stage)     => api.patch(`/candidates/${id}/stage`, { stage }),
-  getContacts:(id)            => api.post(`/candidates/${id}/contacts`),
-  questionnaire:(id)          => api.post(`/candidates/${id}/questionnaire`),
-  bulkUpdate: (ids, data)     => api.patch('/candidates/bulk', { ids, ...data }),
+  list:             (jobId, params) => api.get(`/candidates`, { params: { job_id: jobId, ...params } }),
+  get:              (id)            => api.get(`/candidates/${id}`),
+  updateStage:      (id, stage)     => api.patch(`/candidates/${id}/stage`, { stage }),
+  getContacts:      (id)            => api.post(`/candidates/${id}/contacts`),
+  questionnaire:    (id)            => api.post(`/candidates/${id}/questionnaire`),
+  bulkUpdate:       (ids, data)     => api.patch('/candidates/bulk', { ids, ...data }),
+  generateOutreach: (id)            => api.post(`/candidates/${id}/outreach`),
 }
 
 // ─── Pipeline ─────────────────────────────────────────────────────────────────

@@ -157,3 +157,56 @@ async def generate_questionnaire(analysis: dict, evaluation: dict, provider: str
     )
     raw = await call_llm(prompt, provider=provider, system=SYSTEM, max_tokens=3000)
     return extract_json(raw)
+
+
+OUTREACH_PROMPT = """
+You are an expert talent acquisition specialist writing a personalised LinkedIn cold outreach message.
+
+Write a concise, compelling outreach message for the following candidate.
+The message must:
+- Be 4-6 sentences max (no longer — recruiters lose candidates with long messages)
+- Lead with a specific observation from their profile (not generic flattery)
+- Mention the role title and one specific aspect that would be compelling to THEM
+- End with a low-friction call to action (e.g. "worth a 15-min chat?")
+- Sound human, not templated — avoid clichés like "I came across your profile"
+- NOT mention their score or evaluation — this is external-facing
+
+Candidate name: {name}
+Candidate headline/role: {headline}
+Candidate company: {company}
+Candidate location: {location}
+Candidate strengths (internal context only): {biggest_strength}
+
+Role being hired for: {role_objective}
+Key reason this candidate fits: {fit_reason}
+
+Respond ONLY with this JSON:
+{{
+  "subject": "string (short LinkedIn connection request note, max 300 chars)",
+  "message": "string (full InMail / email body, 4-6 sentences)",
+  "follow_up": "string (short 2-3 sentence follow-up if no response after 5 days)"
+}}
+"""
+
+
+async def generate_outreach_message(
+    candidate_name: str,
+    candidate_headline: str,
+    candidate_company: str,
+    candidate_location: str,
+    biggest_strength: str,
+    role_objective: str,
+    fit_reason: str,
+    provider: str | None = None,
+) -> dict:
+    prompt = OUTREACH_PROMPT.format(
+        name=candidate_name,
+        headline=candidate_headline or "Professional",
+        company=candidate_company or "their current company",
+        location=candidate_location or "",
+        biggest_strength=biggest_strength or "strong relevant background",
+        role_objective=role_objective or "the role",
+        fit_reason=fit_reason or "their profile is a strong match",
+    )
+    raw = await call_llm(prompt, provider=provider, system=SYSTEM, max_tokens=1000)
+    return extract_json(raw)
