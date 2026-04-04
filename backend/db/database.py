@@ -10,6 +10,8 @@ engine = create_async_engine(
     pool_pre_ping=_is_pg,
     pool_size=2 if _is_pg else 1,
     max_overflow=3 if _is_pg else 0,
+    # Supabase uses PgBouncer in transaction mode — disable prepared statements
+    connect_args={"statement_cache_size": 0} if _is_pg else {},
 )
 AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
 
