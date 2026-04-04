@@ -3,8 +3,8 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from pydantic import BaseModel, EmailStr
+from passlib.context import CryptContext
 from jose import JWTError, jwt
-import bcrypt
 from datetime import datetime, timedelta, timezone
 
 from db.database import get_db
@@ -12,20 +12,15 @@ from models.models import User
 from config import settings
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 
 def hash_password(pw: str) -> str:
-    return bcrypt.hashpw(pw.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
-
+    return pwd_ctx.hash(pw)
 
 def verify_password(plain: str, hashed: str) -> bool:
-    if not hashed:
-        return False
-    try:
-        return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
-    except (ValueError, TypeError):
-        return False
+    return pwd_ctx.verify(plain, hashed)
 
 def create_token(data: dict) -> str:
     payload = data.copy()

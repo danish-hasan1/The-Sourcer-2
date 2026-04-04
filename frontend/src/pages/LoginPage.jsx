@@ -21,13 +21,7 @@ export default function LoginPage() {
       setAuth(res.data.access_token, res.data.user)
       navigate('/app/dashboard')
     } catch (err) {
-      if (!err.response) {
-        toast.error('Cannot reach the API. If you are on the hosted app, confirm VITE_API_URL is set on Vercel, or wait for the backend (Render) to wake up.')
-      } else if (err.response.status >= 500) {
-        toast.error('Server error — try again shortly.')
-      } else {
-        toast.error(err.response?.data?.detail || 'Invalid credentials')
-      }
+      toast.error(err.response?.data?.detail || 'Invalid credentials')
     } finally {
       setLoading(false)
     }
@@ -50,9 +44,8 @@ export default function LoginPage() {
         // Demo users exist in DB but password may have changed — show helpful message
         toast.error('Demo account not found. Please sign up or use your own credentials.')
       } else if (!err.response) {
-        toast.error('Cannot reach the API (network, CORS, or wrong API URL). Check VITE_API_URL on Vercel or wait if the backend is cold-starting.')
-      } else if (err.response.status >= 500) {
-        toast.error('Server error — try again shortly.')
+        // Backend offline / cold starting
+        toast.error('Backend is warming up (Render free tier). Wait 30 seconds and try again.')
       } else {
         toast.error(detail || 'Login failed')
       }
