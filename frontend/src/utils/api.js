@@ -21,9 +21,14 @@ api.interceptors.request.use(config => {
 api.interceptors.response.use(
   res => res,
   err => {
+    // Only force-logout on 401 from protected endpoints, NOT from /auth/login itself
     if (err.response?.status === 401) {
-      useAuthStore.getState().logout()
-      window.location.href = '/login'
+      const url = err.config?.url || ''
+      const isLoginAttempt = url.includes('/auth/login') || url.includes('/auth/signup')
+      if (!isLoginAttempt) {
+        useAuthStore.getState().logout()
+        window.location.href = '/login'
+      }
     }
     return Promise.reject(err)
   }

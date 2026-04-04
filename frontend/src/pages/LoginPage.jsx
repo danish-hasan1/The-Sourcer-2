@@ -29,24 +29,26 @@ export default function LoginPage() {
 
   // Demo login helper
   async function demoLogin(role) {
-    setEmail(role === 'admin' ? 'admin@talentai.com' : 'recruiter@talentai.com')
-    setPassword('demo123')
+    const demoEmail    = role === 'admin' ? 'admin@talentai.com' : 'recruiter@talentai.com'
+    const demoPassword = 'demo123'
+    setEmail(demoEmail)
+    setPassword(demoPassword)
     setLoading(true)
     try {
-      const res = await authApi.login(
-        role === 'admin' ? 'admin@talentai.com' : 'recruiter@talentai.com',
-        'demo123'
-      )
+      const res = await authApi.login(demoEmail, demoPassword)
       setAuth(res.data.access_token, res.data.user)
       navigate('/app/dashboard')
-    } catch {
-      // If backend not running, use mock auth
-      setAuth('demo-token', {
-        id: 1, name: role === 'admin' ? 'Admin User' : 'Recruiter',
-        email: role === 'admin' ? 'admin@talentai.com' : 'recruiter@talentai.com',
-        role
-      })
-      navigate('/app/dashboard')
+    } catch (err) {
+      const detail = err.response?.data?.detail || ''
+      if (err.response?.status === 401) {
+        // Demo users exist in DB but password may have changed — show helpful message
+        toast.error('Demo account not found. Please sign up or use your own credentials.')
+      } else if (!err.response) {
+        // Backend offline / cold starting
+        toast.error('Backend is warming up (Render free tier). Wait 30 seconds and try again.')
+      } else {
+        toast.error(detail || 'Login failed')
+      }
     } finally {
       setLoading(false)
     }

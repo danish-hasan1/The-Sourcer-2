@@ -24,14 +24,20 @@ def verify_password(plain: str, hashed: str) -> bool:
 
 def create_token(data: dict) -> str:
     payload = data.copy()
+    # Always store sub as string — PostgreSQL strict type matching requires this
+    if "sub" in payload:
+        payload["sub"] = str(payload["sub"])
     payload["exp"] = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)) -> User:
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        user_id: int = payload.get("sub")
-    except JWTError:
+        user_id_raw = payload.get("sub")
+        if user_id_raw is None:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        user_id = int(user_id_raw)  # convert string back to int for DB query
+    except (JWTError, ValueError):
         raise HTTPException(status_code=401, detail="Invalid token")
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()

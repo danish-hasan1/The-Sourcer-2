@@ -24,13 +24,20 @@ from sqlalchemy import select
 async def lifespan(app: FastAPI):
     # Create tables
     await init_db()
-    # Seed demo users if DB is empty
+    # Seed/ensure demo users always exist
     async with AsyncSessionLocal() as db:
-        result = await db.execute(select(User))
-        if not result.scalars().first():
-            db.add(User(name="Admin User",      email="admin@talentai.com",     company="TalentAI", hashed_pw=hash_password("demo123"), role="admin"))
-            db.add(User(name="Recruiter",        email="recruiter@talentai.com", company="TalentAI", hashed_pw=hash_password("demo123"), role="standard"))
-            await db.commit()
+        for email, name, role in [
+            ("admin@talentai.com",     "Admin User", "admin"),
+            ("recruiter@talentai.com", "Recruiter",  "standard"),
+        ]:
+            result = await db.execute(select(User).where(User.email == email))
+            existing = result.scalar_one_or_none()
+            if not existing:
+                db.add(User(
+                    name=name, email=email, company="TalentAI",
+                    hashed_pw=hash_password("demo123"), role=role, active=True
+                ))
+        await db.commit()
     yield
 
 
