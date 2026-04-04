@@ -148,3 +148,71 @@ def _out(c: Candidate) -> dict:
         "category_scores": ev.get("category_scores", {}),
         "evaluation": ev,
     }
+
+
+@router.post("/{cid}/outreach")
+async def generate_outreach(cid: int, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Generate a personalised outreach message for a candidate."""
+    result = await db.execute(
+        select(Candidate).join(Job).where(Candidate.id == cid, Job.owner_id == user.id)
+    )
+    c = result.scalar_one_or_none()
+    if not c:
+        raise HTTPException(404, "Candidate not found")
+
+    job_result = await db.execute(select(Job).where(Job.id == c.job_id))
+    job = job_result.scalar_one_or_none()
+
+    from services.llm_service import call_llm, extract_json
+    import json
+
+    ev = c.evaluation or {}
+    role_title = job.title if job else "this role"
+    analysis = job.analysis or {}
+
+    prompt = f"""
+You are a senior recruiter writing a personalised LinkedIn connection message for a candidate.
+
+Role: {role_title}
+Role objective: {analysis.get("role_objective", "")}
+
+Candidate: {c.name}
+Headline: {c.headline}
+Company: {c.company}
+Match score: {c.score}/100
+Verdict: {c.verdict}
+Biggest strength: {ev.get("biggest_strength", "")}
+
+Write 3 variations of a LinkedIn outreach message. Each must be:
+- Under 300 characters (LinkedIn connection note limit)
+- Specific to their background — never generic
+- Professional but warm
+- Mention the role naturally
+- Not mention the score or evaluation
+
+Respond ONLY with this JSON:
+{{
+  "messages": [
+    {{"tone": "Professional", "text": "message 1"}},
+    {{"tone": "Warm & direct", "text": "message 2"}},
+    {{"tone": "Role-specific hook", "text": "message 3"}}
+  ],
+  "linkedin_search_url": "https://www.linkedin.com/search/results/people/?keywords={c.name.replace(' ', '%20')}",
+  "subject_line": "Short email subject line if emailing instead"
+}}
+"""
+    try:
+        raw = await call_llm(prompt, system="You are a senior recruiter. Respond with valid JSON only.", max_tokens=1000)
+        return extract_json(raw)
+    except Exception as e:
+        # Fallback
+        name_first = c.name.split()[0] if c.name else "there"
+        return {
+            "messages": [
+                {"tone": "Professional", "text": f"Hi {name_first}, I came across your profile and think your background at {c.company} is a strong fit for a {role_title} role I'm hiring for. Would love to connect and share details."},
+                {"tone": "Warm & direct", "text": f"Hi {name_first} — your experience at {c.company} caught my eye. I'm sourcing for a {role_title} position that aligns well with your background. Open to a quick chat?"},
+                {"tone": "Role-specific hook", "text": f"Hi {name_first}, recruiting for a {role_title} role and your profile stood out. The {ev.get('biggest_strength', 'experience')} you bring is exactly what we need. Interested?"},
+            ],
+            "linkedin_search_url": f"https://www.linkedin.com/search/results/people/?keywords={c.name.replace(' ', '%20')}",
+            "subject_line": f"Opportunity — {role_title}"
+        }

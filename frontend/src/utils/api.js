@@ -63,6 +63,7 @@ export const candidatesApi = {
   updateStage:(id, stage)     => api.patch(`/candidates/${id}/stage`, { stage }),
   getContacts:(id)            => api.post(`/candidates/${id}/contacts`),
   questionnaire:(id)          => api.post(`/candidates/${id}/questionnaire`),
+  outreach:   (id)            => api.post(`/candidates/${id}/outreach`),
   bulkUpdate: (ids, data)     => api.patch('/candidates/bulk', { ids, ...data }),
 }
 

@@ -1,17 +1,19 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
 import {
   Search, GitBranch, FileText, BarChart2, Settings,
   Users, LogOut, ChevronDown, Zap, LayoutDashboard
 } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import { useAppStore } from '../store/appStore'
+import { pipelineApi } from '../utils/api'
 import clsx from 'clsx'
 
 const NAV = [
   { section: 'WORKSPACE' },
   { to: '/app/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/app/source',    icon: Search,          label: 'Source Candidates' },
-  { to: '/app/pipeline',  icon: GitBranch,       label: 'Pipeline', badge: true },
+  { to: '/app/pipeline',  icon: GitBranch,       label: 'Pipeline', pipelineBadge: true },
   { to: '/app/saved-jds', icon: FileText,        label: 'Saved JDs' },
   { section: 'ANALYTICS' },
   { to: '/app/reports',   icon: BarChart2,       label: 'Reports' },
@@ -20,25 +22,36 @@ const NAV = [
   { to: '/app/settings',  icon: Settings,        label: 'Settings' },
 ]
 
+const MODEL_DOTS = {
+  anthropic: 'bg-amber-500',
+  openai:    'bg-green-500',
+  groq:      'bg-purple-500',
+  google:    'bg-blue-500',
+}
+
 export default function Layout() {
   const { user, logout, isAdmin } = useAuthStore()
   const navigate = useNavigate()
-  const modelOverride = useAppStore(s => s.modelOverride)
+  const modelOverride    = useAppStore(s => s.modelOverride)
   const setModelOverride = useAppStore(s => s.setModelOverride)
+  const [pipelineCount, setPipelineCount] = useState(null)
 
-  const models = ['anthropic', 'openai', 'groq', 'google']
-  const currentModel = modelOverride || 'anthropic'
+  const currentModel = modelOverride || 'groq'
+  const models = ['groq', 'anthropic', 'openai', 'google']
 
-  const modelColors = {
-    anthropic: 'bg-amber-100 text-amber-700',
-    openai:    'bg-green-100 text-green-700',
-    groq:      'bg-purple-100 text-purple-700',
-    google:    'bg-blue-100 text-blue-700',
-  }
+  // Fetch live pipeline count
+  useEffect(() => {
+    pipelineApi.summary()
+      .then(res => {
+        const d = res.data
+        const active = (d.sourced || 0) + (d.shortlisted || 0) + (d.in_review || 0) + (d.contacted || 0)
+        setPipelineCount(active)
+      })
+      .catch(() => setPipelineCount(null))
+  }, [])
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50">
-      {/* Sidebar */}
       <aside className="w-[224px] flex-shrink-0 bg-white border-r border-gray-100 flex flex-col">
         {/* Logo */}
         <div className="px-4 py-4 border-b border-gray-100 flex items-center gap-3">
@@ -47,7 +60,7 @@ export default function Layout() {
           </div>
           <div>
             <div className="text-sm font-semibold text-gray-900 leading-tight">TalentAI</div>
-            <div className="text-[10px] text-gray-400 leading-tight">Sourcing Platform</div>
+            <div className="text-[10px] text-gray-400 leading-tight">Your Sourcing Agent</div>
           </div>
         </div>
 
@@ -62,21 +75,16 @@ export default function Layout() {
             if (item.adminOnly && !isAdmin()) return null
             const Icon = item.icon
             return (
-              <NavLink
-                key={item.to}
-                to={item.to}
+              <NavLink key={item.to} to={item.to}
                 className={({ isActive }) => clsx(
                   'flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] mb-0.5 transition-colors',
-                  isActive
-                    ? 'bg-brand-50 text-brand-600 font-medium'
-                    : 'text-gray-500 hover:bg-gray-50 hover:text-gray-800'
-                )}
-              >
+                  isActive ? 'bg-brand-50 text-brand-600 font-medium' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-800'
+                )}>
                 <Icon size={15} className="flex-shrink-0" />
                 <span className="flex-1">{item.label}</span>
-                {item.badge && (
-                  <span className="bg-brand-600 text-white text-[10px] font-medium px-1.5 py-0.5 rounded-full">
-                    12
+                {item.pipelineBadge && pipelineCount !== null && pipelineCount > 0 && (
+                  <span className="bg-brand-600 text-white text-[10px] font-medium px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                    {pipelineCount > 99 ? '99+' : pipelineCount}
                   </span>
                 )}
               </NavLink>
@@ -89,19 +97,16 @@ export default function Layout() {
           {/* Model selector */}
           <div className="relative group">
             <button className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
-              <div className={clsx('w-2 h-2 rounded-full', currentModel === 'anthropic' ? 'bg-amber-500' : currentModel === 'openai' ? 'bg-green-500' : currentModel === 'groq' ? 'bg-purple-500' : 'bg-blue-500')} />
+              <div className={clsx('w-2 h-2 rounded-full flex-shrink-0', MODEL_DOTS[currentModel] || 'bg-gray-400')} />
               <span className="text-[12px] text-gray-600 flex-1 text-left capitalize">{currentModel}</span>
               <ChevronDown size={12} className="text-gray-400" />
             </button>
-            {/* Dropdown */}
             <div className="absolute bottom-full left-0 right-0 mb-1 bg-white border border-gray-200 rounded-lg shadow-lg hidden group-hover:block z-50">
               {models.map(m => (
-                <button
-                  key={m}
-                  onClick={() => setModelOverride(m)}
-                  className={clsx('w-full text-left px-3 py-2 text-[12px] hover:bg-gray-50 first:rounded-t-lg last:rounded-b-lg capitalize flex items-center gap-2', m === currentModel && 'text-brand-600 font-medium')}
-                >
-                  <div className={clsx('w-1.5 h-1.5 rounded-full', m==='anthropic'?'bg-amber-500':m==='openai'?'bg-green-500':m==='groq'?'bg-purple-500':'bg-blue-500')} />
+                <button key={m} onClick={() => setModelOverride(m)}
+                  className={clsx('w-full text-left px-3 py-2 text-[12px] hover:bg-gray-50 first:rounded-t-lg last:rounded-b-lg capitalize flex items-center gap-2',
+                    m === currentModel && 'text-brand-600 font-medium')}>
+                  <div className={clsx('w-1.5 h-1.5 rounded-full', MODEL_DOTS[m] || 'bg-gray-400')} />
                   {m}
                 </button>
               ))}
@@ -117,18 +122,14 @@ export default function Layout() {
               <div className="text-[12px] font-medium text-gray-800 truncate">{user?.name || 'User'}</div>
               <div className="text-[10px] text-gray-400 capitalize">{user?.role || 'standard'}</div>
             </div>
-            <button
-              onClick={() => { logout(); navigate('/login') }}
-              className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
-              title="Logout"
-            >
+            <button onClick={() => { logout(); navigate('/login') }}
+              className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors" title="Logout">
               <LogOut size={13} />
             </button>
           </div>
         </div>
       </aside>
 
-      {/* Main */}
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <Outlet />
       </main>

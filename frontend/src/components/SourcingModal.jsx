@@ -25,9 +25,9 @@ const SOURCING_STEPS = [
   { key: 'complete',  label: 'Done — candidates ready for review',            pct: 100 },
 ]
 
-export default function SourcingModal({ jobId, analysis, onClose, onComplete }) {
-  const [selected, setSelected] = useState(new Set(['linkedin']))
-  const [maxResults, setMaxResults] = useState(25)
+export default function SourcingModal({ jobId, analysis, initialParams, onClose, onComplete }) {
+  const [selected, setSelected] = useState(new Set(initialParams?.platforms || ['linkedin']))
+  const [maxResults, setMaxResults] = useState(initialParams?.maxResults || 25)
   const [running, setRunning] = useState(false)
   const [stepIdx, setStepIdx] = useState(-1)
   const [runId, setRunId] = useState(null)
@@ -58,6 +58,12 @@ export default function SourcingModal({ jobId, analysis, onClose, onComplete }) 
 
     // Simulate progress
     let idx = 0
+    const capturedRunId = runId || 'demo-run-' + Date.now()
+    const searchParams = {
+      platforms: [...selected],
+      maxResults,
+      boolean: analysis?.boolean_strings?.primary || '',
+    }
     timerRef.current = setInterval(() => {
       idx++
       if (idx < SOURCING_STEPS.length) {
@@ -65,7 +71,7 @@ export default function SourcingModal({ jobId, analysis, onClose, onComplete }) 
         if (idx >= 3) setFound(f => f + Math.floor(Math.random() * 6) + 2)
       } else {
         clearInterval(timerRef.current)
-        setTimeout(() => onComplete(runId || 'demo-run'), 600)
+        setTimeout(() => onComplete(capturedRunId, searchParams), 600)
       }
     }, 1400)
   }
