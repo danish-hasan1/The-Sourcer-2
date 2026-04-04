@@ -2,17 +2,21 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 from sqlalchemy.orm import DeclarativeBase
 from config import settings
 
-# Build engine kwargs — asyncpg needs pool_pre_ping for Supabase's connection pooler
 _is_pg = "postgresql" in settings.DATABASE_URL
+
 engine = create_async_engine(
     settings.DATABASE_URL,
     echo=False,
-    pool_pre_ping=_is_pg,
+    # pool_pre_ping fires SELECT pg_catalog.version() as a prepared statement,
+    # which crashes with Supabase PgBouncer (transaction mode). Disabled.
+    pool_pre_ping=False,
     pool_size=2 if _is_pg else 1,
     max_overflow=3 if _is_pg else 0,
-    # Supabase uses PgBouncer in transaction mode — disable prepared statements
+    # statement_cache_size=0 disables asyncpg prepared statements globally —
+    # required for Supabase PgBouncer compatibility.
     connect_args={"statement_cache_size": 0} if _is_pg else {},
 )
+
 AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
 
 class Base(DeclarativeBase):
