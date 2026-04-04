@@ -1,19 +1,19 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.pool import NullPool
 from config import settings
 
 _is_pg = "postgresql" in settings.DATABASE_URL
 
+# Supabase routes connections through PgBouncer (transaction mode) which
+# cannot handle asyncpg prepared statements. NullPool (no connection pooling)
+# is the only fully reliable fix — each request gets a fresh connection,
+# avoiding all prepared-statement reuse errors. Supabase's own pooler
+# handles the actual connection pool on their end.
 engine = create_async_engine(
     settings.DATABASE_URL,
     echo=False,
-    # pool_pre_ping fires SELECT pg_catalog.version() as a prepared statement,
-    # which crashes with Supabase PgBouncer (transaction mode). Disabled.
-    pool_pre_ping=False,
-    pool_size=2 if _is_pg else 1,
-    max_overflow=3 if _is_pg else 0,
-    # statement_cache_size=0 disables asyncpg prepared statements globally —
-    # required for Supabase PgBouncer compatibility.
+    poolclass=NullPool if _is_pg else None,
     connect_args={"statement_cache_size": 0} if _is_pg else {},
 )
 
