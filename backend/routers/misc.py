@@ -66,7 +66,6 @@ class SettingsUpdate(BaseModel):
     active_model:   Optional[str] = None
     serp_provider:  Optional[str] = None
     max_candidates: Optional[int] = None
-    keys:           Optional[dict] = None
 
 @settings_router.get("")
 async def get_settings(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
@@ -86,10 +85,6 @@ async def update_settings(body: SettingsUpdate, user: User = Depends(get_current
     if body.active_model:   s.active_model = body.active_model
     if body.serp_provider:  s.serp_provider = body.serp_provider
     if body.max_candidates: s.max_candidates = body.max_candidates
-    if body.keys:
-        existing = s.api_keys or {}
-        existing.update({k: v for k, v in body.keys.items() if v and v != "***"})
-        s.api_keys = existing
     await db.commit()
     return {"ok": True}
 
