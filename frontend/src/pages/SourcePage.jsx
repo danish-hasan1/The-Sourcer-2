@@ -414,7 +414,6 @@ export default function SourcePage() {
 }
 
 // ─── Tweak Modal ─────────────────────────────────────────────────────────────
-import { sourcingApi } from '../utils/api'
 
 function TweakModal({ analysis, jobId, onClose, onRefine }) {
   const [boolStr, setBoolStr] = useState(analysis?.boolean_strings?.primary || '')
