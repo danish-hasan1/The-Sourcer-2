@@ -30,8 +30,8 @@ def create_token(data: dict) -> str:
 async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)) -> User:
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        user_id: int = int(payload.get("sub"))  # cast ensures str/int both work
-    except (JWTError, TypeError, ValueError):
+        user_id: int = payload.get("sub")
+    except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
@@ -72,7 +72,7 @@ async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
     user = result.scalar_one_or_none()
     if not user or not verify_password(body.password, user.hashed_pw):
         raise HTTPException(status_code=401, detail="Invalid email or password")
-    token = create_token({"sub": str(user.id)})
+    token = create_token({"sub": user.id})
     return {"access_token": token, "token_type": "bearer", "user": UserOut.model_validate(user)}
 
 
@@ -85,7 +85,7 @@ async def signup(body: SignupRequest, db: AsyncSession = Depends(get_db)):
     db.add(user)
     await db.commit()
     await db.refresh(user)
-    token = create_token({"sub": str(user.id)})
+    token = create_token({"sub": user.id})
     return {"access_token": token, "token_type": "bearer", "user": UserOut.model_validate(user)}
 
 

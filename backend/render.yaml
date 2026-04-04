@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: talentai-backend
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    plan: free
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        value: postgresql+asyncpg://postgres.rjooprjzwjyrlawwccla:dfNgJvBTSulnBmzD@aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres
+      - key: SUPABASE_URL
+        value: https://rjooprjzwjyrlawwccla.supabase.co
+      - key: SUPABASE_ANON_KEY
+        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJqb29wcmp6d2p5cmxhd3djY2xhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyODY5NzMsImV4cCI6MjA5MDg2Mjk3M30.HLVZcUxYKYD5Qkc4kGnNbs9I05Zx32yAJKH5cQirDWs
+      - key: GROQ_API_KEY
+        value: sk_LvIgHlvwmXLGi92k5f17WGdyb3FYA0pp5i1RqBhSFrhrEkA2n1db
+      - key: SERPAPI_KEY
+        value: 9400c016f4ced8e2b0b66ba43a2f7092d490c3a25a3a33c1c2f2f6903fc25c6c
+      - key: DEFAULT_LLM_PROVIDER
+        value: groq
+      - key: MAX_CANDIDATES
+        value: "50"
+      - key: FRONTEND_URL
+        value: https://the-sourcer-2.vercel.app

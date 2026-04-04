@@ -1,6 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useDropzone } from 'react-dropzone'
-import { useParams } from 'react-router-dom'
 import { Upload, ChevronRight, X, Sparkles, RefreshCw, Filter, ChevronDown } from 'lucide-react'
 import { sourcingApi, jobsApi } from '../utils/api'
 import { useAppStore } from '../store/appStore'
@@ -15,7 +14,6 @@ import SkeletonCards from '../components/SkeletonCards'
 const STEPS = ['Upload JD', 'Analyse', 'Source', 'Review']
 
 export default function SourcePage() {
-  const { id: paramId } = useParams()
   const [step, setStep] = useState(0)
   const [jdText, setJdText] = useState('')
   const [jobTitle, setJobTitle] = useState('')
@@ -23,32 +21,12 @@ export default function SourcePage() {
   const [jdAnalysis, setJdAnalysis] = useState(null)
   const [analysing, setAnalysing] = useState(false)
   const [showSourcingModal, setShowSourcingModal] = useState(false)
-  const [showTweakModal, setShowTweakModal] = useState(false)
   const [candidates, setCandidates] = useState([])
   const [loadingCandidates, setLoadingCandidates] = useState(false)
   const [activeStage, setActiveStage] = useState('all')
   const [filterFit, setFilterFit] = useState(null)
-  const [savedJdId, setSavedJdId] = useState(null) // eslint-disable-line -- used for future use
-  const [searchParamsOpen, setSearchParamsOpen] = useState(false)
   const { selectedCandidate, setSelectedCandidate } = useAppStore()
   const pollRef = useRef(null)
-
-  // Load existing job when navigating from SavedJDs
-  useEffect(() => {
-    if (!paramId) return
-    jobsApi.get(paramId).then(res => {
-      const job = res.data
-      setJobId(job.id)
-      setJobTitle(job.title || '')
-      setJdText(job.jd_text || '')
-      if (job.analysis) {
-        setJdAnalysis(job.analysis)
-        setStep(2)
-      } else if (job.jd_text) {
-        setStep(1)
-      }
-    }).catch(() => toast.error('Could not load saved JD'))
-  }, [paramId])
 
   // Drop zone
   const onDrop = useCallback(async (files) => {
@@ -57,22 +35,20 @@ export default function SourcePage() {
     if (file.type === 'text/plain') {
       const text = await file.text()
       setJdText(text)
-      if (step === 0) setStep(1)
     } else {
-      // PDF/DOCX — send to /jobs/upload endpoint for text extraction
+      // PDF/DOCX — send to backend for extraction
       const fd = new FormData()
       fd.append('file', file)
       try {
-        const res = await jobsApi.uploadJD(fd)
+        const res = await jobsApi.create(fd)
         setJdText(res.data.text)
-        setJobTitle(prev => prev || res.data.title || '')
-        if (step === 0) setStep(1)
+        setJobTitle(res.data.title || '')
         toast.success('File parsed successfully')
       } catch {
         toast.error('Failed to parse file. Paste the JD manually.')
       }
     }
-  }, [step])
+  }, [])
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -84,7 +60,7 @@ export default function SourcePage() {
     if (!jdText.trim()) { toast.error('Please enter or upload a job description'); return }
     setAnalysing(true)
     try {
-      // Create job, then analyse
+      // Create job record, then call AI analysis
       let jId = jobId
       if (!jId) {
         const res = await jobsApi.create({ title: jobTitle || 'Untitled Role', jd_text: jdText })
@@ -96,62 +72,61 @@ export default function SourcePage() {
       setStep(2)
       toast.success('JD analysed successfully')
     } catch (err) {
-      // Demo mode — mock analysis
-      setJdAnalysis(MOCK_ANALYSIS)
-      setStep(2)
-      toast.success('JD analysed (demo mode)')
+      const msg = err.response?.data?.detail || err.message || 'Analysis failed'
+      if (err.response?.status === 400) {
+        toast.error('No JD text found — please paste or upload the job description first')
+      } else if (err.response?.status === 401) {
+        toast.error('Session expired — please log in again')
+      } else {
+        toast.error(`Analysis failed: ${msg}. Check your API key in Settings.`)
+      }
     } finally {
       setAnalysing(false)
     }
   }
 
-  async function handleSaveDraft() {
-    if (!jdText.trim()) { toast.error('Nothing to save'); return }
-    try {
-      if (jobId) {
-        await jobsApi.update(jobId, { title: jobTitle || 'Untitled Role', jd_text: jdText })
-      } else {
-        const res = await jobsApi.create({ title: jobTitle || 'Untitled Role', jd_text: jdText })
-        setJobId(res.data.id)
-      }
-      toast.success('JD saved ✓')
-    } catch { toast.error('Failed to save') }
-  }
-
   async function handleSourcingComplete(runId) {
     setShowSourcingModal(false)
-    setShowTweakModal(false)
     setStep(3)
-    // Demo mode — no real backend run
-    if (!runId || runId.startsWith('demo-run')) {
-      setLoadingCandidates(false)
-      return
-    }
     setLoadingCandidates(true)
-    // Poll for results
     let attempts = 0
     pollRef.current = setInterval(async () => {
       attempts++
       try {
         const res = await sourcingApi.status(runId)
-        if (res.data.status === 'complete') {
-          clearInterval(pollRef.current)
-          if (!jobId) { setLoadingCandidates(false); return }
-          const cRes = await sourcingApi.results(jobId)
-          setCandidates(cRes.data.candidates || [])
-          setLoadingCandidates(false)
-        }
+        // Stream in candidates as they arrive
         if (res.data.candidates?.length) {
           setCandidates(prev => {
             const ids = new Set(prev.map(c => c.id))
             const newOnes = res.data.candidates.filter(c => !ids.has(c.id))
-            return [...prev, ...newOnes]
+            return newOnes.length ? [...prev, ...newOnes] : prev
           })
+        }
+        if (res.data.status === 'complete') {
+          clearInterval(pollRef.current)
+          const cRes = await sourcingApi.results(jobId)
+          if (cRes.data.candidates?.length) {
+            setCandidates(cRes.data.candidates)
+          }
+          setLoadingCandidates(false)
+          toast.success(`Sourcing complete — ${cRes.data.candidates?.length || 0} candidates found`)
+        }
+        if (res.data.status === 'failed') {
+          clearInterval(pollRef.current)
+          setLoadingCandidates(false)
+          toast.error('Sourcing failed — check your SerpAPI key in Settings')
+        }
+        // Timeout after 3 minutes
+        if (attempts >= 90) {
+          clearInterval(pollRef.current)
+          setLoadingCandidates(false)
+          toast.error('Sourcing timed out — try again with fewer platforms')
         }
       } catch {
         if (attempts >= 5) {
           clearInterval(pollRef.current)
           setLoadingCandidates(false)
+          toast.error('Lost connection to backend — please try again')
         }
       }
     }, 2000)
@@ -189,38 +164,22 @@ export default function SourcePage() {
         <div className="flex-1" />
 
         {step >= 2 && (
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowTweakModal(true)}
-              className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 text-gray-600 text-[13px] rounded-lg hover:bg-gray-50 transition"
-            >
-              <Filter size={13} /> Tweak
-            </button>
-            <button
-              onClick={() => setShowSourcingModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-brand-600 text-white text-[13px] font-medium rounded-lg hover:bg-brand-800 transition"
-            >
-              <Sparkles size={14} />
-              {step === 2 ? 'Source Profiles' : 'Re-source'}
-            </button>
-          </div>
+          <button
+            onClick={() => setShowSourcingModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-brand-600 text-white text-[13px] font-medium rounded-lg hover:bg-brand-800 transition"
+          >
+            <Sparkles size={14} />
+            {step === 2 ? 'Source Profiles' : 'Re-source'}
+          </button>
         )}
         {jdText && step < 2 && (
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleSaveDraft}
-              className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 text-gray-600 text-[13px] rounded-lg hover:bg-gray-50 transition"
-            >
-              Save draft
-            </button>
-            <button
-              onClick={handleAnalyse}
-              disabled={analysing}
-              className="flex items-center gap-2 px-4 py-2 bg-brand-600 text-white text-[13px] font-medium rounded-lg hover:bg-brand-800 transition disabled:opacity-60"
-            >
-              {analysing ? <><RefreshCw size={14} className="animate-spin" /> Analysing…</> : <><Sparkles size={14} /> Analyse JD</>}
-            </button>
-          </div>
+          <button
+            onClick={handleAnalyse}
+            disabled={analysing}
+            className="flex items-center gap-2 px-4 py-2 bg-brand-600 text-white text-[13px] font-medium rounded-lg hover:bg-brand-800 transition disabled:opacity-60"
+          >
+            {analysing ? <><RefreshCw size={14} className="animate-spin" /> Analysing…</> : <><Sparkles size={14} /> Analyse JD</>}
+          </button>
         )}
       </div>
 
@@ -292,53 +251,6 @@ export default function SourcePage() {
 
             {/* Candidates */}
             <div className="flex-1 flex flex-col min-w-0 border-x border-gray-100">
-              {/* Search params strip */}
-              {jdAnalysis && (
-                <div className="border-b border-gray-100 bg-gray-50 flex-shrink-0">
-                  <button
-                    onClick={() => setSearchParamsOpen(p => !p)}
-                    className="w-full flex items-center gap-2 px-4 py-2 text-[11px] text-gray-500 hover:text-gray-700 transition"
-                  >
-                    <Filter size={11} />
-                    <span className="font-medium">Search parameters</span>
-                    {jdAnalysis.location && <span className="px-1.5 py-0.5 bg-brand-100 text-brand-600 rounded-full text-[10px]">{jdAnalysis.location}</span>}
-                    {(jdAnalysis.boolean_strings?.primary || jdAnalysis.suggested_titles?.[0]) && (
-                      <span className="truncate max-w-[200px] font-mono text-[10px] text-gray-400">
-                        {jdAnalysis.boolean_strings?.primary?.slice(0, 60) || jdAnalysis.suggested_titles?.join(', ')}
-                      </span>
-                    )}
-                    <ChevronDown size={11} className={clsx('ml-auto transition-transform flex-shrink-0', searchParamsOpen && 'rotate-180')} />
-                  </button>
-                  {searchParamsOpen && (
-                    <div className="px-4 pb-3 space-y-2">
-                      {jdAnalysis.location && (
-                        <div>
-                          <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">Location</div>
-                          <div className="text-[12px] text-gray-700">{jdAnalysis.location}</div>
-                        </div>
-                      )}
-                      {jdAnalysis.suggested_titles?.length > 0 && (
-                        <div>
-                          <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">Titles searched</div>
-                          <div className="flex flex-wrap gap-1">
-                            {jdAnalysis.suggested_titles.map(t => (
-                              <span key={t} className="text-[10px] px-2 py-0.5 rounded-full bg-brand-50 text-brand-700">{t}</span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      {jdAnalysis.boolean_strings?.primary && (
-                        <div>
-                          <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">Boolean query</div>
-                          <div className="text-[11px] font-mono text-gray-600 bg-white rounded-lg p-2 border border-gray-100 break-all leading-relaxed">
-                            {jdAnalysis.boolean_strings.primary}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
               {/* Stage strip */}
               <div className="flex items-center gap-1.5 px-4 py-2.5 bg-white border-b border-gray-100 overflow-x-auto flex-shrink-0">
                 {[['all','All'],['sourced','Sourced'],['shortlisted','Shortlisted'],['in_review','In Review'],['contacted','Contacted']].map(([v,l]) => (
@@ -399,122 +311,6 @@ export default function SourcePage() {
           onComplete={handleSourcingComplete}
         />
       )}
-
-      {/* Tweak Modal */}
-      {showTweakModal && (
-        <TweakModal
-          analysis={jdAnalysis}
-          jobId={jobId}
-          onClose={() => setShowTweakModal(false)}
-          onRefine={(runId) => { setShowTweakModal(false); handleSourcingComplete(runId) }}
-        />
-      )}
-    </div>
-  )
-}
-
-// ─── Tweak Modal ─────────────────────────────────────────────────────────────
-
-function TweakModal({ analysis, jobId, onClose, onRefine }) {
-  const [boolStr, setBoolStr] = useState(analysis?.boolean_strings?.primary || '')
-  const [location, setLocation] = useState(analysis?.location || '')
-  const [maxCandidates, setMaxCandidates] = useState(25)
-  const [running, setRunning] = useState(false)
-
-  async function handleRefine() {
-    if (!boolStr.trim()) { toast.error('Boolean query required'); return }
-    setRunning(true)
-    try {
-      const res = await sourcingApi.refine(jobId, {
-        boolean_override: boolStr,
-        location_override: location,
-        max_candidates: maxCandidates,
-      })
-      toast.success('Refined search started')
-      onRefine(res.data.run_id)
-    } catch {
-      toast.error('Failed to start refined search')
-    } finally {
-      setRunning(false)
-    }
-  }
-
-  return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg animate-fade-up overflow-hidden">
-        <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100">
-          <div className="w-8 h-8 bg-amber-50 rounded-lg flex items-center justify-center">
-            <Filter size={15} className="text-amber-600" />
-          </div>
-          <div className="flex-1">
-            <div className="text-sm font-semibold text-gray-900">Tweak Search Parameters</div>
-            <div className="text-xs text-gray-400 mt-0.5">Adjust the search to get better matching candidates</div>
-          </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 transition">
-            <X size={15} />
-          </button>
-        </div>
-
-        <div className="p-6 space-y-4">
-          {/* Quick presets */}
-          {analysis?.boolean_strings && (
-            <div>
-              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Quick presets</div>
-              <div className="flex flex-wrap gap-2">
-                {[['Primary', analysis.boolean_strings.primary], ['Broader', analysis.boolean_strings.broad], ['Narrower', analysis.boolean_strings.narrow]].filter(([,v]) => v).map(([label, val]) => (
-                  <button key={label} onClick={() => setBoolStr(val)}
-                    className={clsx('text-[11px] px-3 py-1.5 rounded-full border transition',
-                      boolStr === val ? 'border-brand-400 bg-brand-50 text-brand-600' : 'border-gray-200 text-gray-600 hover:border-gray-300')}>
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Boolean query */}
-          <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5 block">Boolean Search Query</label>
-            <textarea
-              value={boolStr}
-              onChange={e => setBoolStr(e.target.value)}
-              rows={4}
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-[12px] font-mono text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-400 transition resize-none leading-relaxed"
-              placeholder='e.g. ("Brake Test Engineer" OR "Vehicle Dynamics") site:linkedin.com/in'
-            />
-          </div>
-
-          {/* Location */}
-          <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5 block">Location</label>
-            <input
-              value={location}
-              onChange={e => setLocation(e.target.value)}
-              className="w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 transition"
-              placeholder='e.g. Lyon, France'
-            />
-          </div>
-
-          {/* Max candidates */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Max candidates</label>
-              <span className="text-sm font-semibold text-brand-600">{maxCandidates}</span>
-            </div>
-            <input type="range" min={10} max={100} step={5} value={maxCandidates}
-              onChange={e => setMaxCandidates(+e.target.value)}
-              className="w-full accent-brand-600" />
-          </div>
-
-          <button
-            onClick={handleRefine}
-            disabled={running}
-            className="w-full py-3 bg-brand-600 hover:bg-brand-800 text-white rounded-xl text-sm font-semibold transition flex items-center justify-center gap-2 disabled:opacity-60"
-          >
-            {running ? <><RefreshCw size={14} className="animate-spin" /> Starting…</> : <><Sparkles size={14} /> Run refined search</>}
-          </button>
-        </div>
-      </div>
     </div>
   )
 }

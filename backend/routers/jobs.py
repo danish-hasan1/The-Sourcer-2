@@ -76,10 +76,42 @@ async def analyze_job(job_id: int, user: User = Depends(get_current_user), db: A
     job = result.scalar_one_or_none()
     if not job:
         raise HTTPException(404, "Job not found")
-    if not job.jd_text:
-        raise HTTPException(400, "No JD text to analyze")
+    if not job.jd_text or not job.jd_text.strip():
+        raise HTTPException(400, "No JD text to analyze — please add job description text first")
 
-    analysis = await analyse_jd(job.jd_text)
+    # Load user's preferred provider and API key from their settings
+    from models.models import Settings as UserSettings
+    from config import settings as app_settings
+    settings_result = await db.execute(select(UserSettings).where(UserSettings.user_id == user.id))
+    user_settings = settings_result.scalar_one_or_none()
+
+    provider = (user_settings.active_model if user_settings else None) or app_settings.DEFAULT_LLM_PROVIDER
+    user_api_keys = (user_settings.api_keys or {}) if user_settings else {}
+
+    # Temporarily override the environment key with the user's saved key if they have one
+    import os
+    original_keys = {}
+    key_map = {
+        "anthropic": "ANTHROPIC_API_KEY",
+        "openai":    "OPENAI_API_KEY",
+        "groq":      "GROQ_API_KEY",
+        "google":    "GOOGLE_API_KEY",
+    }
+    for p, env_var in key_map.items():
+        user_key = user_api_keys.get(p, "")
+        if user_key and user_key != "***":
+            original_keys[env_var] = os.environ.get(env_var, "")
+            os.environ[env_var] = user_key
+
+    try:
+        analysis = await analyse_jd(job.jd_text.strip(), provider=provider)
+    except Exception as e:
+        raise HTTPException(500, f"AI analysis failed: {str(e)}. Check your API key in Settings.")
+    finally:
+        # Restore original env vars
+        for env_var, original_val in original_keys.items():
+            os.environ[env_var] = original_val
+
     job.analysis = analysis
     job.status = "analysed"
     await db.commit()

@@ -27,7 +27,7 @@ async def _anthropic(prompt, system, max_tokens):
     import anthropic
     client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
     msg = await client.messages.create(
-        model="claude-3-5-sonnet-20241022",
+        model="claude-sonnet-4-6",
         max_tokens=max_tokens,
         system=system or "You are a senior recruitment intelligence AI.",
         messages=[{"role": "user", "content": prompt}],
@@ -73,20 +73,6 @@ async def _google(prompt, system, max_tokens):
 
 
 def extract_json(text: str) -> dict | list:
-    """Strip markdown fences and parse JSON. Finds outermost { } or [ ] to handle LLM preamble/postamble."""
+    """Strip markdown fences and parse JSON from LLM output."""
     clean = re.sub(r"```(?:json)?", "", text).replace("```", "").strip()
-    # Try direct parse first
-    try:
-        return json.loads(clean)
-    except json.JSONDecodeError:
-        pass
-    # Find outermost JSON object or array
-    for start_char, end_char in [('{', '}'), ('[', ']')]:
-        start = clean.find(start_char)
-        end = clean.rfind(end_char)
-        if start != -1 and end > start:
-            try:
-                return json.loads(clean[start:end+1])
-            except json.JSONDecodeError:
-                continue
-    raise ValueError(f"No valid JSON found in LLM response: {clean[:200]}")
+    return json.loads(clean)

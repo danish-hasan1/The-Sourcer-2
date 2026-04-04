@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from typing import List
 import asyncio
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 
 from db.database import get_db, AsyncSessionLocal
 from models.models import Job, SourcingRun, Candidate, User
@@ -134,20 +134,11 @@ async def refine_search(
     run_id = str(run.id)
     _run_state[run_id] = {"status": "running", "progress": 0, "step": "Starting refined search…", "candidates": [], "found": 0}
 
-    # Apply overrides to analysis before passing to task
-    tweaked_analysis = dict(job.analysis)
-    if body.get("boolean_override"):
-        bs = dict(tweaked_analysis.get("boolean_strings", {}))
-        bs["primary"] = body["boolean_override"]
-        tweaked_analysis["boolean_strings"] = bs
-    if body.get("location_override") is not None:
-        tweaked_analysis["location"] = body["location_override"]
-
     background_tasks.add_task(
         _sourcing_task,
         run_id=run_id,
         job_id=job_id,
-        analysis=tweaked_analysis,
+        analysis=job.analysis,
         platforms=body.get("platforms", ["linkedin"]),
         max_candidates=body.get("max_candidates", 25),
         serp_key=settings.SERPAPI_KEY,
@@ -215,7 +206,7 @@ async def _sourcing_task(run_id, job_id, analysis, platforms, max_candidates, se
                 run.status = "complete"
                 run.progress = 100
                 run.found_count = len(candidates)
-                run.finished_at = datetime.utcnow()
+                run.finished_at = datetime.now(timezone.utc)
 
             await db.commit()
 
@@ -235,11 +226,6 @@ async def _sourcing_task(run_id, job_id, analysis, platforms, max_candidates, se
 
 def _candidate_out(c: Candidate) -> dict:
     ev = c.evaluation or {}
-    # Preserve both awarded score and max weight for each competency
-    category_scores = {
-        k: {"score": v.get("awarded", 0), "max": v.get("max", 100)}
-        for k, v in ev.get("category_scores", {}).items()
-    }
     return {
         "id": c.id,
         "name": c.name,
@@ -259,5 +245,8 @@ def _candidate_out(c: Candidate) -> dict:
         "biggest_strength": ev.get("biggest_strength", ""),
         "biggest_risk": ev.get("biggest_risk", ""),
         "shortlist_decision": ev.get("shortlist_decision", ""),
-        "category_scores": category_scores,
+        "payments": ev.get("category_scores", {}).get("Payments domain expertise", {}).get("awarded", 0),
+        "stake":    ev.get("category_scores", {}).get("Stakeholder management",    {}).get("awarded", 0),
+        "data":     ev.get("category_scores", {}).get("Data-driven product development", {}).get("awarded", 0),
+        "lead":     ev.get("category_scores", {}).get("Leadership", {}).get("awarded", 0),
     }

@@ -5,46 +5,62 @@ All prompts are faithful to the original intent; responses are returned as struc
 """
 from services.llm_service import call_llm, extract_json
 
-SYSTEM = "You are a senior recruitment intelligence AI that understands hiring intent deeply. Always respond with valid JSON only — no preamble, no markdown, no commentary outside the JSON."
+SYSTEM = (
+    "You are a senior recruitment intelligence AI. "
+    "You MUST analyse the EXACT job description provided — do NOT use examples, templates, or defaults. "
+    "Every field in your response must be derived specifically from the JD text given. "
+    "Always respond with valid JSON only — no preamble, no markdown fences, no text outside the JSON."
+)
 
 # ─── Prompt 1 + 2 combined: JD Understanding + Scoring Matrix ─────────────────
 ANALYSE_PROMPT = """
-You are acting as the original hiring decision-maker who authored this job description,
-combined with the perspective of a senior talent evaluator.
+You are acting as the original hiring decision-maker who authored the job description below,
+combined with the perspective of a senior talent evaluator who understands how this specific
+role is actually assessed in real hiring situations.
 
-Your goal: understand the JD EXACTLY as intended, then build a weighted scoring framework.
+CRITICAL: You must analyse the EXACT job description provided. Do NOT default to any generic
+role type. If the JD is for an engineer, analyse an engineering role. If it is for a designer,
+analyse a design role. Every field must reflect the actual content of THIS JD.
 
 Rules:
-- Do NOT summarize. Infer intent, priorities, and unstated expectations.
-- Assume the JD may be incomplete or loosely written.
-- Scoring weights must total exactly 100.
-- Weight by actual hiring importance, NOT keyword frequency.
+- Do NOT summarize the JD — infer intent, priorities, and unstated expectations
+- Do NOT use generic or template answers
+- Scoring weights must total EXACTLY 100 points
+- Weight by actual hiring importance for THIS specific role, not keyword frequency
+- The boolean_strings must include job titles and skills specific to THIS role
 
 Job Description:
+===START JD===
 {jd_text}
+===END JD===
 
-Respond ONLY with this JSON structure:
+Based ONLY on the JD above, respond with this exact JSON structure (no other text):
 {{
-  "role_objective": "string",
-  "seniority": "string",
-  "ownership": "string",
+  "role_objective": "What real-world problem does THIS specific role solve — based on the JD above",
+  "seniority": "Exact seniority level inferred from THIS JD",
+  "ownership": "Degree of ownership described in THIS JD",
   "primary_competencies": [
-    {{"name": "string", "weight": number, "why": "string", "strong_evidence": "string", "weak_evidence": "string"}}
+    {{
+      "name": "Competency name specific to this role",
+      "weight": 25,
+      "why": "Why this competency is critical for THIS specific role",
+      "strong_evidence": "What strong evidence looks like on a CV for this role",
+      "weak_evidence": "What weak evidence looks like"
+    }}
   ],
   "secondary_competencies": [
-    {{"name": "string", "weight": number}}
+    {{"name": "Nice-to-have competency for this role", "weight": 10}}
   ],
-  "implicit_expectations": "string",
-  "evaluation_biases": "string",
-  "non_negotiables": ["string"],
-  "ideal_candidate_brief": "string",
+  "implicit_expectations": "Skills and behaviours assumed but not written in THIS JD",
+  "evaluation_biases": "What THIS hiring manager will prioritise during screening",
+  "non_negotiables": ["Must-have from THIS JD that would trigger rejection"],
+  "ideal_candidate_brief": "2-3 sentence brief of the ideal candidate FOR THIS SPECIFIC ROLE",
   "boolean_strings": {{
-    "primary": "string",
-    "broad": "string",
-    "narrow": "string"
+    "primary": "Boolean string using titles and skills FROM THIS JD",
+    "broad": "Broader discovery string for THIS role type",
+    "narrow": "High-precision string for THIS role"
   }},
-  "location": "string",
-  "suggested_titles": ["string"],
+  "suggested_titles": ["Relevant job titles for THIS role"],
   "suggested_platforms": ["linkedin", "naukri", "indeed", "github", "reed", "infojobs"]
 }}
 """
@@ -52,13 +68,14 @@ Respond ONLY with this JSON structure:
 # ─── Prompt 3: CV Evaluation ───────────────────────────────────────────────────
 EVALUATE_PROMPT = """
 You are a senior recruitment professional evaluating a candidate against a pre-defined
-scoring matrix.
+scoring matrix for a SPECIFIC role.
 
 Evaluation rules:
-- Do NOT rely on keyword presence alone.
-- Infer skills from role scope, career trajectory, and demonstrated ownership.
-- Experienced professionals often omit foundational skills — assume possible omission.
-- Evaluate depth, scale, outcomes — not just tool mentions.
+- Evaluate against the SPECIFIC role in the job analysis, not a generic benchmark
+- Do NOT rely on keyword presence alone
+- Infer skills from role scope, career trajectory, and demonstrated ownership
+- Experienced professionals often omit obvious skills — assume possible omission
+- Evaluate depth, ownership, scale, and outcomes — not just tool mentions
 
 Job Analysis (scoring matrix and competencies):
 {analysis}
@@ -68,36 +85,37 @@ Candidate Profile:
 
 Respond ONLY with this JSON:
 {{
-  "name": "string",
-  "headline": "string",
-  "seniority_apparent": "string",
-  "domain_alignment": "string",
-  "skills_matched": ["string"],
-  "skills_gap": ["string"],
+  "name": "candidate name",
+  "headline": "their current role and company",
+  "seniority_apparent": "entry/mid/senior/lead/head",
+  "domain_alignment": "How well their domain matches this specific role",
+  "skills_matched": ["skills they clearly have that match this role"],
+  "skills_gap": ["skills this role needs that they lack"],
   "category_scores": {{
-    "competency_name": {{"awarded": number, "max": number, "evidence": "string", "strength": "Strong|Moderate|Weak|Missing"}}
+    "competency_name": {{"awarded": 20, "max": 25, "evidence": "specific evidence from their profile", "strength": "Strong|Moderate|Weak|Missing"}}
   }},
-  "implicit_inferences": ["string"],
-  "total_score": number,
+  "implicit_inferences": ["skills inferred from their experience even if not stated"],
+  "total_score": 75,
   "verdict": "Strong fit|Moderate fit|Weak fit|Reject",
   "shortlist_decision": "Yes|No|Borderline",
-  "biggest_strength": "string",
-  "biggest_risk": "string",
+  "biggest_strength": "single biggest strength for THIS role",
+  "biggest_risk": "single biggest risk for THIS role",
   "confidence": "High|Medium|Low",
-  "interview_questions": ["string"],
-  "top_interview_question": "string",
-  "gaps_critical": ["string"],
-  "gaps_trainable": ["string"]
+  "interview_questions": ["question 1", "question 2", "question 3"],
+  "top_interview_question": "the single most important question to ask",
+  "gaps_critical": ["critical gaps that could disqualify"],
+  "gaps_trainable": ["gaps that could be learned on the job"]
 }}
 """
 
 # ─── Prompt 5: CV Enrichment Questionnaire ────────────────────────────────────
 QUESTIONNAIRE_PROMPT = """
 You are a senior hiring manager generating a targeted clarification questionnaire
-for a candidate based on their CV evaluation.
+for a candidate based on their CV evaluation for a specific role.
 
 Purpose: uncover relevant experience that may exist but was not clearly expressed.
 Never assume incompetence — assume possible omission or brevity.
+Questions must be role-specific — not generic.
 
 Job Analysis:
 {analysis}
@@ -110,23 +128,23 @@ Respond ONLY with this JSON:
   "sections": [
     {{
       "title": "1. Role-Relevant Experience Clarification",
-      "questions": ["string", "string"]
+      "questions": ["Specific question about this role", "Another specific question"]
     }},
     {{
       "title": "2. Depth, Complexity & Proficiency",
-      "questions": ["string", "string"]
+      "questions": ["Question about scale/complexity", "Question about tools/methods"]
     }},
     {{
       "title": "3. Adjacent or Transferable Experience",
-      "questions": ["string", "string"]
+      "questions": ["Question about transferable experience", "Question about related work"]
     }},
     {{
-      "title": "4. Implicit Seniority & Behavioral Capabilities",
-      "questions": ["string", "string"]
+      "title": "4. Implicit Seniority & Behavioural Capabilities",
+      "questions": ["Question about leadership/influence", "Question about decision-making"]
     }},
     {{
       "title": "5. Ownership, Impact & Outcomes",
-      "questions": ["string", "string"]
+      "questions": ["Question about measurable outcomes", "Question about business impact"]
     }}
   ]
 }}
@@ -134,9 +152,15 @@ Respond ONLY with this JSON:
 
 
 async def analyse_jd(jd_text: str, provider: str | None = None) -> dict:
-    prompt = ANALYSE_PROMPT.format(jd_text=jd_text)
+    if not jd_text or not jd_text.strip():
+        raise ValueError("JD text is empty")
+    prompt = ANALYSE_PROMPT.format(jd_text=jd_text.strip())
     raw = await call_llm(prompt, provider=provider, system=SYSTEM, max_tokens=4096)
-    return extract_json(raw)
+    result = extract_json(raw)
+    # Validate we got a real analysis, not a default
+    if not result.get("role_objective") or not result.get("primary_competencies"):
+        raise ValueError("LLM returned incomplete analysis")
+    return result
 
 
 async def evaluate_candidate(analysis: dict, profile: str, provider: str | None = None) -> dict:
@@ -156,57 +180,4 @@ async def generate_questionnaire(analysis: dict, evaluation: dict, provider: str
         evaluation=json.dumps(evaluation, indent=2),
     )
     raw = await call_llm(prompt, provider=provider, system=SYSTEM, max_tokens=3000)
-    return extract_json(raw)
-
-
-OUTREACH_PROMPT = """
-You are an expert talent acquisition specialist writing a personalised LinkedIn cold outreach message.
-
-Write a concise, compelling outreach message for the following candidate.
-The message must:
-- Be 4-6 sentences max (no longer — recruiters lose candidates with long messages)
-- Lead with a specific observation from their profile (not generic flattery)
-- Mention the role title and one specific aspect that would be compelling to THEM
-- End with a low-friction call to action (e.g. "worth a 15-min chat?")
-- Sound human, not templated — avoid clichés like "I came across your profile"
-- NOT mention their score or evaluation — this is external-facing
-
-Candidate name: {name}
-Candidate headline/role: {headline}
-Candidate company: {company}
-Candidate location: {location}
-Candidate strengths (internal context only): {biggest_strength}
-
-Role being hired for: {role_objective}
-Key reason this candidate fits: {fit_reason}
-
-Respond ONLY with this JSON:
-{{
-  "subject": "string (short LinkedIn connection request note, max 300 chars)",
-  "message": "string (full InMail / email body, 4-6 sentences)",
-  "follow_up": "string (short 2-3 sentence follow-up if no response after 5 days)"
-}}
-"""
-
-
-async def generate_outreach_message(
-    candidate_name: str,
-    candidate_headline: str,
-    candidate_company: str,
-    candidate_location: str,
-    biggest_strength: str,
-    role_objective: str,
-    fit_reason: str,
-    provider: str | None = None,
-) -> dict:
-    prompt = OUTREACH_PROMPT.format(
-        name=candidate_name,
-        headline=candidate_headline or "Professional",
-        company=candidate_company or "their current company",
-        location=candidate_location or "",
-        biggest_strength=biggest_strength or "strong relevant background",
-        role_objective=role_objective or "the role",
-        fit_reason=fit_reason or "their profile is a strong match",
-    )
-    raw = await call_llm(prompt, provider=provider, system=SYSTEM, max_tokens=1000)
     return extract_json(raw)

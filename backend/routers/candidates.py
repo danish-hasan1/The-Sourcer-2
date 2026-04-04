@@ -7,7 +7,7 @@ from typing import List, Optional
 from db.database import get_db
 from models.models import Candidate, Job, User
 from routers.auth import get_current_user
-from services.jd_service import generate_questionnaire, generate_outreach_message
+from services.jd_service import generate_questionnaire
 
 router = APIRouter(prefix="/candidates", tags=["candidates"])
 
@@ -55,19 +55,6 @@ async def get_candidate(cid: int, user: User = Depends(get_current_user), db: As
     return _out(c)
 
 
-@router.patch("/bulk")
-async def bulk_update(body: BulkUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    result = await db.execute(
-        select(Candidate).join(Job).where(Candidate.id.in_(body.ids), Job.owner_id == user.id)
-    )
-    candidates = result.scalars().all()
-    for c in candidates:
-        if body.stage:
-            c.stage = body.stage
-    await db.commit()
-    return {"updated": len(candidates)}
-
-
 @router.patch("/{cid}/stage")
 async def update_stage(cid: int, body: StageUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     result = await db.execute(
@@ -79,6 +66,19 @@ async def update_stage(cid: int, body: StageUpdate, user: User = Depends(get_cur
     c.stage = body.stage
     await db.commit()
     return {"ok": True, "stage": c.stage}
+
+
+@router.patch("/bulk")
+async def bulk_update(body: BulkUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(Candidate).join(Job).where(Candidate.id.in_(body.ids), Job.owner_id == user.id)
+    )
+    candidates = result.scalars().all()
+    for c in candidates:
+        if body.stage:
+            c.stage = body.stage
+    await db.commit()
+    return {"updated": len(candidates)}
 
 
 @router.post("/{cid}/questionnaire")
@@ -148,35 +148,3 @@ def _out(c: Candidate) -> dict:
         "category_scores": ev.get("category_scores", {}),
         "evaluation": ev,
     }
-
-
-@router.post("/{cid}/outreach")
-async def generate_outreach(
-    cid: int,
-    user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """Generate a personalised AI outreach message for the candidate."""
-    result = await db.execute(
-        select(Candidate).join(Job).where(Candidate.id == cid, Job.owner_id == user.id)
-    )
-    c = result.scalar_one_or_none()
-    if not c:
-        raise HTTPException(404, "Candidate not found")
-
-    job_result = await db.execute(select(Job).where(Job.id == c.job_id))
-    job = job_result.scalar_one_or_none()
-    if not job or not job.analysis:
-        raise HTTPException(400, "Job analysis required for outreach generation")
-
-    ev = c.evaluation or {}
-    outreach = await generate_outreach_message(
-        candidate_name=c.name or "",
-        candidate_headline=c.headline or "",
-        candidate_company=c.company or "",
-        candidate_location=c.location or "",
-        biggest_strength=ev.get("biggest_strength", ""),
-        role_objective=job.analysis.get("role_objective", job.title or ""),
-        fit_reason=ev.get("shortlist_decision", "") + " — " + ev.get("biggest_strength", ""),
-    )
-    return {"outreach": outreach, "profile_url": c.profile_url}

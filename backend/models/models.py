@@ -1,10 +1,10 @@
 from sqlalchemy import Column, Integer, String, Text, Float, Boolean, DateTime, ForeignKey, JSON
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 from db.database import Base
 
 def utcnow():
-    return datetime.utcnow()
+    return datetime.now(timezone.utc)
 
 class User(Base):
     __tablename__ = "users"
