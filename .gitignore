@@ -1,33 +1,8 @@
-# Python
 __pycache__/
-*.py[cod]
-*.egg-info/
-dist/
-build/
-venv/
-.venv/
 *.pyc
-
-# Environment — NEVER commit these
-backend/.env
-frontend/.env
-frontend/.env.local
-frontend/.env.production
-
-# Database
+*.pyo
+.venv/
+venv/
 *.db
-*.sqlite
-
-# Node
-node_modules/
-frontend/dist/
-frontend/.vite/
-
-# OS
-.DS_Store
-Thumbs.db
-
-# IDE
-.vscode/
-.idea/
-*.swp
+.streamlit/secrets.toml
+.env
