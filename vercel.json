@@ -8,7 +8,7 @@
     { "source": "/api/:path*", "destination": "/api/index" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
-  "functions": {
+ "functions": {
     "api/index.py": {
       "runtime": "@vercel/python",
       "maxDuration": 30
