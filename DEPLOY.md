@@ -1,41 +1,82 @@
-# TalentAI — Deployment Guide
+# TalentAI — Deployment Guide (Vercel only, free)
 
-Live URLs:
-- Frontend (Vercel):  https://the-sourcer-2.vercel.app
-- Backend (Render):   https://talentai-backend-poey.onrender.com
-- Database (Supabase):https://rjooprjzwjyrlawwccla.supabase.co
+Both frontend AND backend deploy to the same Vercel project.
+No Render, no Railway, no separate backend service needed.
 
 ---
 
-## To update your Render service (srv-d7840nh4tr6s73bs8bdg)
+## Architecture
 
-Go to Render → talentai-backend-poey → **Environment** and make sure these vars are set:
+```
+the-sourcer-2.vercel.app/          → React frontend (static)
+the-sourcer-2.vercel.app/api/*     → Python FastAPI (serverless functions)
+rjooprjzwjyrlawwccla.supabase.co   → PostgreSQL database
+```
+
+---
+
+## Deploy steps (one-time setup)
+
+### 1. Push to GitHub
+
+```bash
+git add .
+git commit -m "Unified Vercel deployment"
+git push
+```
+
+### 2. Vercel project settings
+
+Go to vercel.com → your project (the-sourcer-2) → Settings → General:
+- **Root directory:** leave blank (uses repo root)
+- **Framework:** Other
+
+Go to Settings → Build & Development:
+- **Build command:** `cd frontend && npm install && npm run build`
+- **Output directory:** `frontend/dist`
+- **Install command:** leave blank
+
+### 3. Environment variables
+
+Go to Settings → Environment Variables and add ALL of these:
 
 | Key | Value |
 |-----|-------|
 | `DATABASE_URL` | `postgresql+asyncpg://postgres.rjooprjzwjyrlawwccla:dfNgJvBTSulnBmzD@aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres` |
+| `SECRET_KEY` | `talentai-stable-jwt-secret-do-not-change-after-first-deploy-2026` |
+| `ALGORITHM` | `HS256` |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | `10080` |
 | `SUPABASE_URL` | `https://rjooprjzwjyrlawwccla.supabase.co` |
-| `SUPABASE_ANON_KEY` | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJqb29wcmp6d2p5cmxhd3djY2xhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyODY5NzMsImV4cCI6MjA5MDg2Mjk3M30.HLVZcUxYKYD5Qkc4kGnNbs9I05Zx32yAJKH5cQirDWs` |
+| `SUPABASE_ANON_KEY` | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...` (full key) |
 | `GROQ_API_KEY` | `sk_LvIgHlvwmXLGi92k5f17WGdyb3FYA0pp5i1RqBhSFrhrEkA2n1db` |
 | `SERPAPI_KEY` | `9400c016f4ced8e2b0b66ba43a2f7092d490c3a25a3a33c1c2f2f6903fc25c6c` |
 | `DEFAULT_LLM_PROVIDER` | `groq` |
 | `MAX_CANDIDATES` | `50` |
 | `FRONTEND_URL` | `https://the-sourcer-2.vercel.app` |
-| `SECRET_KEY` | Any 32+ char random string |
 
-Then: **Manual Deploy → Deploy latest commit**
+### 4. Redeploy
+
+Deployments → Redeploy (or just push a commit).
 
 ---
 
-## To update your Vercel project (the-sourcer-2)
+## Vercel free tier limits
 
-Go to Vercel → the-sourcer-2 → **Settings → Environment Variables**:
+| Limit | Value | Impact |
+|-------|-------|--------|
+| Function duration | 10 seconds | JD analysis with Groq: ~2-3s ✓ |
+| Bandwidth | 100 GB/month | More than enough for MVP |
+| Deployments | Unlimited | ✓ |
+| Cold starts | None | ✓ (unlike Render) |
 
-| Key | Value |
-|-----|-------|
-| `VITE_API_URL` | `https://talentai-backend-poey.onrender.com` |
+If LLM calls start timing out, upgrade to Vercel Pro ($20/mo) for 60s limit.
 
-Then: **Deployments → Redeploy**
+---
+
+## Demo credentials
+
+- Admin: `admin@talentai.com` / `demo123`
+- Recruiter: `recruiter@talentai.com` / `demo123`
 
 ---
 
@@ -43,9 +84,12 @@ Then: **Deployments → Redeploy**
 
 ```bash
 # Backend
-cd backend && pip install -r requirements.txt && python main.py
+cd backend
+pip install -r requirements.txt
+python -m uvicorn main:app --reload --port 8000
 
-# Frontend (new terminal)
-cd frontend && npm install && npm run dev
-# → http://localhost:3000
+# Frontend
+cd frontend
+npm install
+npm run dev   # http://localhost:3000
 ```

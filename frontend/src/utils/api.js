@@ -1,15 +1,16 @@
 import axios from 'axios'
 import { useAuthStore } from '../store/authStore'
 
-// In production (Vercel), VITE_API_URL points to your Render backend.
-// In development, Vite proxies /api → localhost:8000 via vite.config.js.
+// When frontend and backend are both on Vercel (same domain),
+// API calls go to /api/* on the same origin — no env var needed.
+// VITE_API_URL is only used if you want to point to a separate backend.
 const BASE = import.meta.env.VITE_API_URL
   ? `${import.meta.env.VITE_API_URL}/api`
   : '/api'
 
 const api = axios.create({
   baseURL: BASE,
-  timeout: 120_000,
+  timeout: 60_000,
 })
 
 api.interceptors.request.use(config => {
