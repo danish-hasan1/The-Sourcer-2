@@ -142,11 +142,11 @@ export default function LoginPage() {
             <div className="w-14 h-14 bg-amber-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <WifiOff size={24} className="text-amber-500" />
             </div>
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">Backend is waking up</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">Connecting to server…</h2>
             <p className="text-sm text-gray-500 mb-1 leading-relaxed">
-              The server was asleep (Render free tier). It's warming up now.
+              The API is starting up. This takes a few seconds on first load.
             </p>
-            <p className="text-xs text-gray-400 mb-6">This only happens after 15 min of inactivity.</p>
+            <p className="text-xs text-gray-400 mb-6">Retrying automatically.</p>
 
             {/* Countdown ring */}
             <div className="relative w-20 h-20 mx-auto mb-6">
