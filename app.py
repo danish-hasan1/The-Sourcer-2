@@ -243,11 +243,15 @@ def page_source():
         uploaded = st.file_uploader("Upload JD", type=["txt","pdf","docx"], label_visibility="collapsed")
         if uploaded:
             if uploaded.type == "text/plain":
-                jd_text = uploaded.read().decode("utf-8")
+                jd_text = uploaded.read().decode("utf-8", errors="ignore")
             elif uploaded.name.endswith(".pdf"):
-                import fitz
-                doc = fitz.open(stream=uploaded.read(), filetype="pdf")
-                jd_text = "\n".join(p.get_text() for p in doc)
+                try:
+                    import pdfplumber, io
+                    with pdfplumber.open(io.BytesIO(uploaded.read())) as pdf:
+                        jd_text = "\n".join(p.extract_text() or "" for p in pdf.pages)
+                except Exception as e:
+                    st.error(f"Could not parse PDF: {e}. Try copying the text and pasting directly.")
+                    jd_text = ""
             elif uploaded.name.endswith(".docx"):
                 import docx, io
                 doc = docx.Document(io.BytesIO(uploaded.read()))
